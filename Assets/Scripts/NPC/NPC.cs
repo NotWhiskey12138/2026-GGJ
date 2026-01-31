@@ -1,8 +1,8 @@
 using UnityEngine;
-using NPC.Controller;
-using NPC.Domain;
+using NPCSystem.Controller;
+using NPCSystem.Domain;
 
-namespace NPC
+namespace NPCSystem
 {
     /// <summary>
     /// Main NPC component - attach this to NPC GameObject
@@ -10,10 +10,15 @@ namespace NPC
     [RequireComponent(typeof(NpcController))]
     public class NPC : MonoBehaviour
     {
+        [Header("NPC Settings")]
+        [SerializeField] private bool canBePossessed = true;
+
         private NpcController _controller;
 
         public NpcController Controller => _controller;
         public string NpcId => _controller.NpcId;
+        public bool CanBePossessed => canBePossessed;
+
         public NpcPhase CurrentPhase
         {
             get
@@ -22,7 +27,8 @@ namespace NPC
                 return state?.Phase ?? NpcPhase.Idle;
             }
         }
-        public bool IsSeducible => _controller.IsSeducible();
+
+        public bool IsSeducible => canBePossessed && CurrentPhase == NpcPhase.Idle;
         public bool IsPossessed => CurrentPhase == NpcPhase.Possessed;
 
         private void Awake()
