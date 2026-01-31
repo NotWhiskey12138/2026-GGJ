@@ -14,6 +14,8 @@ public class ClickablePlatform : MonoBehaviour
     
     [Header("状态")]
     [SerializeField] private bool isActive = false; // 是否处于激活（红色）状态
+
+    [Header("蜜蜂")] [SerializeField] private GameObject bee;
     
     private Renderer platformRenderer;
     private MaterialPropertyBlock materialPropertyBlock;
@@ -52,6 +54,8 @@ public class ClickablePlatform : MonoBehaviour
     {
         // 切换状态
         ToggleState();
+
+        Instantiate(bee, transform.position, Quaternion.identity);
         
         // 点击动画 - 缩小
         scaleTween?.Kill();

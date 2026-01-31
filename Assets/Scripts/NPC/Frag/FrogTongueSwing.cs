@@ -32,6 +32,9 @@ public class FrogTonguePullImpulse : MonoBehaviour
     private bool busy;
     private Tween moveTween;
     private Vector2 hookPoint;
+    
+    //bee
+    private Collider2D lastHookCollider;
 
     void Awake()
     {
@@ -48,6 +51,7 @@ public class FrogTonguePullImpulse : MonoBehaviour
         if (TryFindHook(out hookPoint))
         {
             AutoTonguePull(hookPoint);
+            
         }
     }
 
@@ -81,7 +85,11 @@ public class FrogTonguePullImpulse : MonoBehaviour
                 bestCol = h;
                 best = p;
             }
+            
         }
+
+        //bee
+        lastHookCollider = bestCol;
 
         return bestCol != null;
     }
@@ -111,8 +119,15 @@ public class FrogTonguePullImpulse : MonoBehaviour
                 Vector2 imp = impulseDir * impulse + Vector2.up * impulseUpBonus;
                 rb.AddForce(imp, ForceMode2D.Impulse);
 
+                var lickable = lastHookCollider != null ? lastHookCollider.GetComponentInParent<Lickable>() : null;
+                lickable?.OnLicked();
+                lastHookCollider = null;
+
+                
                 ShowTongue(false, point);
                 busy = false;
+                
+                
             });
     }
 
