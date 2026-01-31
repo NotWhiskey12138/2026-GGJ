@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace NPCSystem.Domain
 {
@@ -48,39 +49,47 @@ namespace NPCSystem.Domain
         public float StunRemaining { get; }
         public bool CanBePossessed { get; }
         public PatrolData Patrol { get; }
+        public Vector2 Position { get; }
 
         public NpcStateData(
             string npcId,
             NpcPhase phase = NpcPhase.Idle,
             float stunRemaining = 0f,
             bool canBePossessed = true,
-            PatrolData patrol = default)
+            PatrolData patrol = default,
+            Vector2 position = default)
         {
             NpcId = npcId;
             Phase = phase;
             StunRemaining = stunRemaining;
             CanBePossessed = canBePossessed;
             Patrol = patrol;
+            Position = position;
         }
 
         public NpcStateData WithPhase(NpcPhase newPhase)
         {
-            return new NpcStateData(NpcId, newPhase, StunRemaining, CanBePossessed, Patrol);
+            return new NpcStateData(NpcId, newPhase, StunRemaining, CanBePossessed, Patrol, Position);
         }
 
         public NpcStateData WithStunRemaining(float duration)
         {
-            return new NpcStateData(NpcId, Phase, duration, CanBePossessed, Patrol);
+            return new NpcStateData(NpcId, Phase, duration, CanBePossessed, Patrol, Position);
         }
 
         public NpcStateData WithPatrolDirection(bool movingToB)
         {
-            return new NpcStateData(NpcId, Phase, StunRemaining, CanBePossessed, Patrol.WithMovingToB(movingToB));
+            return new NpcStateData(NpcId, Phase, StunRemaining, CanBePossessed, Patrol.WithMovingToB(movingToB), Position);
         }
 
         public NpcStateData Reset()
         {
-            return new NpcStateData(NpcId, NpcPhase.Idle, 0f, CanBePossessed, Patrol);
+            return new NpcStateData(NpcId, NpcPhase.Idle, 0f, CanBePossessed, Patrol, Position);
+        }
+
+        public NpcStateData WithPosition(Vector2 position)
+        {
+            return new NpcStateData(NpcId, Phase, StunRemaining, CanBePossessed, Patrol, position);
         }
 
         public bool IsSeducible => CanBePossessed && Phase == NpcPhase.Idle;

@@ -1,6 +1,8 @@
 using UnityEngine;
 using MaskSystem;
+using MaskSystem.Domain;
 using NPCSystem;
+using NPCSystem.Controller;
 namespace Game.Controller
 {
     /// <summary>
@@ -13,12 +15,22 @@ namespace Game.Controller
         [SerializeField] private Mask mask;
         [SerializeField] private Camera mainCamera;
 
+        [Header("Slow Motion")]
+        [SerializeField] private bool slowMoOnRelease = true;
+        [SerializeField] private float slowMoScale = 0.2f;
+        [SerializeField] private float slowMoDuration = 0.25f;
+
+        private float defaultFixedDeltaTime;
+        private Coroutine slowMoRoutine;
+
         private void Awake()
         {
             if (mainCamera == null)
             {
                 mainCamera = Camera.main;
             }
+
+            defaultFixedDeltaTime = Time.fixedDeltaTime;
         }
 
         private void Update()
@@ -46,6 +58,10 @@ namespace Game.Controller
                 {
                     mask.Release();
                     Debug.Log("Released possession with Space key.");
+                    if (slowMoOnRelease)
+                    {
+                        TriggerSlowMo();
+                    }
                 }
             }
         }
@@ -72,9 +88,23 @@ namespace Game.Controller
 
             if (hit != null)
             {
+                if (mask != null && mask.IsPossessing)
+                {
+                    string targetNpcId = MaskDomain.Instance.CurrentTargetId;
+                    NpcController controller = NpcController.GetById(targetNpcId);
+                    if (controller != null)
+                    {
+                        controller.HandlePossessedClick(hit.gameObject);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("No possessed NPC controller found.");
+                    }
+                    return;
+                }
+
                 // Check if hit object has NPC
                 NPC npc = hit.GetComponent<NPC>();
-
                 if (npc != null)
                 {
                     Debug.Log($"Tap gets npc {npc.NpcId}");
@@ -95,6 +125,32 @@ namespace Game.Controller
             {
                 Debug.Log($"Successfully possessed NPC: {npc.NpcId}");
             }
+        }
+
+        private void TriggerSlowMo()
+        {
+            if (slowMoRoutine != null)
+            {
+                StopCoroutine(slowMoRoutine);
+            }
+            slowMoRoutine = StartCoroutine(SlowMoCoroutine());
+        }
+
+        private System.Collections.IEnumerator SlowMoCoroutine()
+        {
+            Time.timeScale = slowMoScale;
+            Time.fixedDeltaTime = defaultFixedDeltaTime * slowMoScale;
+
+            float timer = 0f;
+            while (timer < slowMoDuration)
+            {
+                timer += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Time.timeScale = 1f;
+            Time.fixedDeltaTime = defaultFixedDeltaTime;
+            slowMoRoutine = null;
         }
     }
 }

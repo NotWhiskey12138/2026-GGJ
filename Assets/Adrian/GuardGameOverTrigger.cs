@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using NPCSystem;
+using MaskSystem.Domain;
+using MaskSystem;
 
 public class GuardGameOverTrigger : MonoBehaviour
 {
@@ -32,6 +34,13 @@ public class GuardGameOverTrigger : MonoBehaviour
 
         if (reloadSceneOnGameOver)
         {
+            // Reset mask state so it won't stay attached after reload
+            MaskDomain.Instance.ForceReset();
+            var mask = FindObjectOfType<Mask>();
+            if (mask != null)
+            {
+                mask.ResetToSpawn();
+            }
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }

@@ -68,13 +68,13 @@ namespace NPCSystem.Domain
 
         #region Registry Methods
 
-        public void RegisterNpc(string npcId, bool canBePossessed = true, PatrolData patrol = default)
+        public void RegisterNpc(string npcId, bool canBePossessed = true, PatrolData patrol = default, UnityEngine.Vector2 startPosition = default)
         {
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!_npcStates.ContainsKey(npcId))
             {
-                _npcStates[npcId] = new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed, patrol);
+                _npcStates[npcId] = new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed, patrol, startPosition);
             }
         }
 
@@ -99,6 +99,47 @@ namespace NPCSystem.Domain
         {
             if (!_npcStates.TryGetValue(npcId, out var currentState)) return;
             _npcStates[npcId] = currentState.WithPatrolDirection(movingToB);
+        }
+
+        public UnityEngine.Vector2 IdleAction(
+            string npcId,
+            UnityEngine.Vector2 currentPosition,
+            UnityEngine.Vector2 pointA,
+            UnityEngine.Vector2 pointB,
+            float walkSpeed,
+            float deltaTime,
+            float reachThreshold)
+        {
+            if (!_npcStates.TryGetValue(npcId, out var currentState)) return currentPosition;
+            if (currentState.Phase != NpcPhase.Idle) return currentPosition;
+
+            var patrol = currentState.Patrol;
+            UnityEngine.Vector2 targetPoint = patrol.MovingToB ? pointB : pointA;
+
+            UnityEngine.Vector2 newPosition = UnityEngine.Vector2.MoveTowards(
+                currentPosition,
+                targetPoint,
+                walkSpeed * deltaTime
+            );
+
+            float distance = UnityEngine.Vector2.Distance(newPosition, targetPoint);
+            if (distance <= reachThreshold)
+            {
+                currentState = currentState.WithPatrolDirection(!patrol.MovingToB);
+            }
+
+            _npcStates[npcId] = currentState.WithPosition(newPosition);
+            return newPosition;
+        }
+
+        public virtual UnityEngine.Vector2 PossessedAction(string npcId, UnityEngine.Vector2 targetPosition)
+        {
+            if (!_npcStates.TryGetValue(npcId, out var currentState)) return targetPosition;
+            if (currentState.Phase != NpcPhase.Possessed) return currentState.Position;
+
+            UnityEngine.Debug.Log($"[NpcDomain] PossessedAction: {npcId}");
+            _npcStates[npcId] = currentState.WithPosition(targetPosition);
+            return targetPosition;
         }
 
         #endregion

@@ -49,14 +49,14 @@ namespace NPCSystem.Controller
         {
             _registry[npcId] = this;
 
-            NpcDomain.Instance.RegisterNpc(npcId, canBePossessed);
+            Vector2 startPoint = GetPatrolPointA();
+            transform.position = startPoint;
+
+            NpcDomain.Instance.RegisterNpc(npcId, canBePossessed, default, startPoint);
 
             NpcDomain.Instance.OnStateChanged += HandleStateChanged;
             MaskDomain.Instance.OnPossessionStarted += HandlePossessionStarted;
             MaskDomain.Instance.OnPossessionEnded += HandlePossessionEnded;
-
-            Vector2 startPoint = GetPatrolPointA();
-            transform.position = startPoint;
         }
 
         private void OnDisable()
@@ -92,23 +92,20 @@ namespace NPCSystem.Controller
                 return;
             }
 
-            var patrol = state.Value.Patrol;
             Vector2 pointA = GetPatrolPointA();
             Vector2 pointB = GetPatrolPointB();
 
-            Vector2 targetPoint = patrol.MovingToB ? pointB : pointA;
-
-            transform.position = Vector2.MoveTowards(
+            Vector2 newPosition = NpcDomain.Instance.IdleAction(
+                npcId,
                 transform.position,
-                targetPoint,
-                walkSpeed * Time.deltaTime
+                pointA,
+                pointB,
+                walkSpeed,
+                Time.deltaTime,
+                reachThreshold
             );
 
-            float distance = Vector2.Distance(transform.position, targetPoint);
-            if (distance <= reachThreshold)
-            {
-                NpcDomain.Instance.SetPatrolDirection(npcId, !patrol.MovingToB);
-            }
+            transform.position = newPosition;
         }
 
         private Vector2 GetPatrolPointA()
@@ -126,6 +123,24 @@ namespace NPCSystem.Controller
             var state = NpcDomain.Instance.GetState(npcId);
             if (!state.HasValue) return false;
             return state.Value.IsSeducible;
+        }
+
+        public void HandlePossessedClick(GameObject target)
+        {
+            if (target == null) return;
+
+            var state = NpcDomain.Instance.GetState(npcId);
+            if (!state.HasValue || state.Value.Phase != NpcPhase.Possessed) return;
+
+            if (!IsValidPossessedTarget(target)) return;
+
+            Vector2 newPosition = NpcDomain.Instance.PossessedAction(npcId, target.transform.position);
+            transform.position = newPosition;
+        }
+
+        protected virtual bool IsValidPossessedTarget(GameObject target)
+        {
+            return true;
         }
 
         #region Event Handlers
