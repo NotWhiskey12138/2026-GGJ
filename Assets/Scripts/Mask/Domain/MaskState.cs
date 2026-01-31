@@ -37,19 +37,19 @@ namespace MaskSystem.Domain
             return new MaskStateData(Phase, npcId, PossessionDuration);
         }
 
-        public MaskStateData WithDuration(float duration)
-        {
-            return new MaskStateData(Phase, TargetNpcId, duration);
-        }
-
         public MaskStateData Reset()
         {
             return new MaskStateData(MaskPhase.Idle, null, 0f);
         }
 
+        public MaskStateData WithDuration(float newDuration)
+        {
+            return new MaskStateData(Phase, TargetNpcId, newDuration);
+        }
+
         public override string ToString()
         {
-            return $"[MaskState] Phase: {Phase}, Target: {TargetNpcId ?? "None"}, Duration: {PossessionDuration:F2}s";
+            return $"[MaskState] Phase: {Phase}, Target: {TargetNpcId ?? "None"}, Duration: {PossessionDuration:0.00}s";
         }
     }
 

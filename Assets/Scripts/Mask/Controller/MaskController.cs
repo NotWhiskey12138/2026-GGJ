@@ -12,14 +12,31 @@ namespace MaskSystem.Controller
         [Header("Release Settings")]
         [SerializeField] private float releaseUpwardForce = 5f;
 
+        private Vector3 spawnPosition;
+        private Quaternion spawnRotation;
+        private Transform originalParent;
+        private RigidbodyType2D originalBodyType;
+
         #region Unity Lifecycle
+
+        private void Awake()
+        {
+            originalParent = transform.parent;
+            spawnPosition = transform.position;
+            spawnRotation = transform.rotation;
+
+            Rigidbody2D rb = GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                originalBodyType = rb.bodyType;
+            }
+        }
 
         private void Update()
         {
             if (MaskDomain.Instance.IsPossessing)
             {
                 FollowPossessedTarget();
-                MaskDomain.Instance.UpdatePossessionTime(Time.deltaTime);
             }
         }
 
@@ -48,6 +65,22 @@ namespace MaskSystem.Controller
         }
 
         #region Public Methods
+
+        public void ResetToSpawn()
+        {
+            MaskDomain.Instance.ForceReset();
+
+            transform.SetParent(originalParent);
+            transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+
+            Rigidbody2D rb = GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.bodyType = originalBodyType;
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+            }
+        }
 
         /// <summary>
         /// Possess an NPC immediately
@@ -99,6 +132,8 @@ namespace MaskSystem.Controller
             }
 
             string targetId = MaskDomain.Instance.CurrentTargetId;
+            Rigidbody2D parentRb = transform.parent != null ? transform.parent.GetComponent<Rigidbody2D>() : null;
+            Vector2 inheritedVelocity = parentRb != null ? parentRb.linearVelocity : Vector2.zero;
 
             if (!MaskDomain.Instance.Release())
             {
@@ -109,12 +144,12 @@ namespace MaskSystem.Controller
             // Detach from NPC
             transform.SetParent(null);
 
-            // Enable physics and apply upward force
+            // Enable physics and preserve current velocity, then add upward velocity
             Rigidbody2D rb = GetComponent<Rigidbody2D>();
             if (rb != null)
             {
                 rb.bodyType = RigidbodyType2D.Dynamic;
-                rb.linearVelocity = Vector2.up * releaseUpwardForce;
+                rb.linearVelocity = inheritedVelocity + Vector2.up * releaseUpwardForce;
             }
 
             Debug.Log($"Mask released NPC: {targetId}");

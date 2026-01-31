@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using NPCSystem;
 
 public class GuardGameOverTrigger : MonoBehaviour
 {
@@ -14,7 +15,15 @@ public class GuardGameOverTrigger : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (triggered) return;
-        if (!other.CompareTag(playerTag)) return;
+        NPC npc = other.GetComponent<NPC>();
+        if (npc != null)
+        {
+            if (!npc.IsPossessed) return;
+        }
+        else if (!other.CompareTag(playerTag))
+        {
+            return;
+        }
 
         triggered = true;
 

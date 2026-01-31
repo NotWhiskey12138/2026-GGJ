@@ -14,6 +14,12 @@ namespace MaskSystem
         private MaskController _controller;
         private Collider2D _collider;
 
+        [Header("Ground Check")]
+        [SerializeField] private bool requireAirborne = false;
+        [SerializeField] private Transform groundCheck;
+        [SerializeField] private float groundCheckRadius = 0.12f;
+        [SerializeField] private LayerMask groundLayer;
+
         public MaskController Controller => _controller;
         public MaskPhase CurrentPhase => MaskDomain.Instance.CurrentState.Phase;
         public string TargetNpcId => MaskDomain.Instance.CurrentState.TargetNpcId;
@@ -32,6 +38,12 @@ namespace MaskSystem
         public bool TryPossessNpc(NPCSystem.NPC npc)
         {
             if (npc == null) return false;
+
+            if (requireAirborne && IsGrounded())
+            {
+                Debug.Log("Mask is grounded; possession blocked by ground check.");
+                return false;
+            }
 
             Collider2D npcCollider = npc.GetComponent<Collider2D>();
             if (npcCollider == null)
@@ -57,6 +69,17 @@ namespace MaskSystem
         public void Release()
         {
             _controller.Release();
+        }
+
+        public void ResetToSpawn()
+        {
+            _controller.ResetToSpawn();
+        }
+
+        private bool IsGrounded()
+        {
+            if (groundCheck == null) return false;
+            return Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer) != null;
         }
     }
 }

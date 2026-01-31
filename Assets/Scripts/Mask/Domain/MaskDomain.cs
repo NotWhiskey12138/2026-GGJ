@@ -72,7 +72,7 @@ namespace MaskSystem.Domain
         #region Public Methods
 
         /// <summary>
-        /// Possess an NPC. Only works when Idle.
+        /// Possess an NPC. Only works when Idle。
         /// </summary>
         public bool Possess(string npcId)
         {
