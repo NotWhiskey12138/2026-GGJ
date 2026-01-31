@@ -82,11 +82,8 @@ namespace NPCSystem.Bat
             if (domain == null) return;
 
             hasPossessedTarget = false;
-            domain.ForceReset();
-            domain.SetPosition(homePosition);
-            transform.position = homePosition;
-
-            Debug.Log($"[{NpcId}] Bat released, return to home.");
+            domain.Release(0f);
+            Debug.Log($"[{NpcId}] Bat released, keep position.");
         }
     }
 }

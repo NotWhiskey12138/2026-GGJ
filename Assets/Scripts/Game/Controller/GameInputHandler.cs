@@ -82,18 +82,21 @@ namespace Game.Controller
 
             // Convert screen position to world position for 2D
             Vector2 worldPosition = mainCamera.ScreenToWorldPoint(screenPosition);
+            Debug.Log($"Tap world position: {worldPosition}");
 
             // 2D check at tap position
             Collider2D hit = Physics2D.OverlapPoint(worldPosition);
 
             if (hit != null)
             {
+                Debug.Log($"Tap hit: {hit.name}");
                 if (mask != null && mask.IsPossessing)
                 {
                     string targetNpcId = MaskDomain.Instance.CurrentTargetId;
                     NpcController controller = NpcController.GetById(targetNpcId);
                     if (controller != null)
                     {
+                        Debug.Log($"Forwarding tap to possessed NPC: {targetNpcId}");
                         controller.HandlePossessedClick(hit.gameObject);
                     }
                     else
@@ -109,6 +112,10 @@ namespace Game.Controller
                 {
                     Debug.Log($"Tap gets npc {npc.NpcId}");
                     AttachMasktoNPC(npc);
+                }
+                else
+                {
+                    Debug.Log("Tap hit has no NPC component.");
                 }
             }
             else
