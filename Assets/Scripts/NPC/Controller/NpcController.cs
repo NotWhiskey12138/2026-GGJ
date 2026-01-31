@@ -24,13 +24,14 @@ namespace NPCSystem.Controller
         [SerializeField] private string npcId;
         [SerializeField] private bool canBePossessed = true;
         [SerializeField] private float stunDuration = 2f;
+        [SerializeField] private bool stunOnRelease = true;
 
         [Header("Movement Settings")]
         [SerializeField] private float walkSpeed = 2f;
 
         [Header("Patrol Settings")]
-        [SerializeField] private Vector2 patrolPointA = new Vector2(-3f, 0f);
-        [SerializeField] private Vector2 patrolPointB = new Vector2(3f, 0f);
+        [SerializeField] private Transform patrolPointAObj;
+        [SerializeField] private Transform patrolPointBObj;
         [SerializeField] private float reachThreshold = 0.1f;
 
         public string NpcId => npcId;
@@ -53,6 +54,9 @@ namespace NPCSystem.Controller
             NpcDomain.Instance.OnStateChanged += HandleStateChanged;
             MaskDomain.Instance.OnPossessionStarted += HandlePossessionStarted;
             MaskDomain.Instance.OnPossessionEnded += HandlePossessionEnded;
+
+            Vector2 startPoint = GetPatrolPointA();
+            transform.position = startPoint;
         }
 
         private void OnDisable()
@@ -69,10 +73,9 @@ namespace NPCSystem.Controller
         {
             var state = NpcDomain.Instance.GetState(npcId);
 
-            // Always move right for simple testing (even when possessed)
             if (!state.HasValue || state.Value.Phase != NpcPhase.Stunned)
             {
-                transform.position += Vector3.right * walkSpeed * Time.deltaTime;
+                UpdateMovement();
             }
             else if (state.Value.Phase == NpcPhase.Stunned)
             {
@@ -90,15 +93,8 @@ namespace NPCSystem.Controller
             }
 
             var patrol = state.Value.Patrol;
-            Vector2 pointA = new Vector2(patrol.PointAX, patrol.PointAY);
-            Vector2 pointB = new Vector2(patrol.PointBX, patrol.PointBY);
-
-            // Use serialized values if domain has zero values
-            if (pointA == Vector2.zero && pointB == Vector2.zero)
-            {
-                pointA = patrolPointA;
-                pointB = patrolPointB;
-            }
+            Vector2 pointA = GetPatrolPointA();
+            Vector2 pointB = GetPatrolPointB();
 
             Vector2 targetPoint = patrol.MovingToB ? pointB : pointA;
 
@@ -113,6 +109,16 @@ namespace NPCSystem.Controller
             {
                 NpcDomain.Instance.SetPatrolDirection(npcId, !patrol.MovingToB);
             }
+        }
+
+        private Vector2 GetPatrolPointA()
+        {
+            return patrolPointAObj != null ? (Vector2)patrolPointAObj.position : transform.position;
+        }
+
+        private Vector2 GetPatrolPointB()
+        {
+            return patrolPointBObj != null ? (Vector2)patrolPointBObj.position : transform.position;
         }
 
         public bool IsSeducible()
@@ -148,8 +154,16 @@ namespace NPCSystem.Controller
         {
             if (targetNpcId != npcId) return;
 
-            NpcDomain.Instance.Release(npcId, stunDuration);
-            Debug.Log($"[{npcId}] Released, stunned for {stunDuration}s.");
+            if (stunOnRelease)
+            {
+                NpcDomain.Instance.Release(npcId, stunDuration);
+                Debug.Log($"[{npcId}] Released, stunned for {stunDuration}s.");
+            }
+            else
+            {
+                NpcDomain.Instance.Release(npcId, 0f);
+                Debug.Log($"[{npcId}] Released, no stun.");
+            }
         }
 
         #endregion
@@ -196,9 +210,11 @@ namespace NPCSystem.Controller
             Gizmos.DrawWireSphere(transform.position, 0.5f);
 
             Gizmos.color = Color.cyan;
-            Gizmos.DrawSphere(patrolPointA, 0.2f);
-            Gizmos.DrawSphere(patrolPointB, 0.2f);
-            Gizmos.DrawLine(patrolPointA, patrolPointB);
+            Vector2 pointA = GetPatrolPointA();
+            Vector2 pointB = GetPatrolPointB();
+            Gizmos.DrawSphere(pointA, 0.2f);
+            Gizmos.DrawSphere(pointB, 0.2f);
+            Gizmos.DrawLine(pointA, pointB);
         }
 
         #endregion

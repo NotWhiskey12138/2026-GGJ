@@ -16,6 +16,8 @@ namespace MaskSystem.Controller
         private Quaternion spawnRotation;
         private Transform originalParent;
         private RigidbodyType2D originalBodyType;
+        private Vector3 lastParentPosition;
+        private Vector2 parentVelocity;
 
         #region Unity Lifecycle
 
@@ -40,6 +42,14 @@ namespace MaskSystem.Controller
             }
         }
 
+        private void LateUpdate()
+        {
+            if (MaskDomain.Instance.IsPossessing)
+            {
+                UpdateParentVelocity();
+            }
+        }
+
         #endregion
 
         private void FollowPossessedTarget()
@@ -59,9 +69,25 @@ namespace MaskSystem.Controller
             if (transform.parent != targetNpc.transform)
             {
                 transform.SetParent(targetNpc.transform);
+                lastParentPosition = targetNpc.transform.position;
+                parentVelocity = Vector2.zero;
             }
 
             transform.localPosition = attachOffset;
+        }
+
+        private void UpdateParentVelocity()
+        {
+            Transform parent = transform.parent;
+            if (parent == null) return;
+
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;
+
+            Vector3 currentParentPosition = parent.position;
+            Vector3 delta = currentParentPosition - lastParentPosition;
+            parentVelocity = new Vector2(delta.x / deltaTime, delta.y / deltaTime);
+            lastParentPosition = currentParentPosition;
         }
 
         #region Public Methods
@@ -108,6 +134,8 @@ namespace MaskSystem.Controller
             // Attach to NPC
             transform.SetParent(npcController.transform);
             transform.localPosition = attachOffset;
+            lastParentPosition = npcController.transform.position;
+            parentVelocity = Vector2.zero;
 
             // Disable physics
             Rigidbody2D rb = GetComponent<Rigidbody2D>();
@@ -133,7 +161,7 @@ namespace MaskSystem.Controller
 
             string targetId = MaskDomain.Instance.CurrentTargetId;
             Rigidbody2D parentRb = transform.parent != null ? transform.parent.GetComponent<Rigidbody2D>() : null;
-            Vector2 inheritedVelocity = parentRb != null ? parentRb.linearVelocity : Vector2.zero;
+            Vector2 inheritedVelocity = GetInheritedVelocity(parentRb);
 
             if (!MaskDomain.Instance.Release())
             {
@@ -153,6 +181,24 @@ namespace MaskSystem.Controller
             }
 
             Debug.Log($"Mask released NPC: {targetId}");
+        }
+
+        private Vector2 GetInheritedVelocity(Rigidbody2D parentRb)
+        {
+            if (parentRb == null) return parentVelocity;
+
+            // If NPC moves via Transform while having a Rigidbody2D, linearVelocity can be zero.
+            if (parentRb.bodyType == RigidbodyType2D.Kinematic)
+            {
+                return parentVelocity;
+            }
+
+            if (parentRb.linearVelocity.sqrMagnitude <= 0.0001f)
+            {
+                return parentVelocity;
+            }
+
+            return parentRb.linearVelocity;
         }
 
         #endregion
