@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace NPCSystem.Domain
 {
@@ -9,39 +8,6 @@ namespace NPCSystem.Domain
     /// </summary>
     public class NpcDomain
     {
-        #region Singleton
-
-        private static NpcDomain _instance;
-        private static readonly object _lock = new object();
-
-        public static NpcDomain Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    lock (_lock)
-                    {
-                        if (_instance == null)
-                        {
-                            _instance = new NpcDomain();
-                        }
-                    }
-                }
-                return _instance;
-            }
-        }
-
-        public static void ResetInstance()
-        {
-            lock (_lock)
-            {
-                _instance = null;
-            }
-        }
-
-        #endregion
-
         #region Events
 
         public event EventHandler<NpcStateChangedEventArgs> OnStateChanged;
@@ -53,56 +19,38 @@ namespace NPCSystem.Domain
 
         #region State
 
-        private readonly Dictionary<string, NpcStateData> _npcStates;
+        private NpcStateData _state;
 
         #endregion
 
-        #region Constructor
-
-        private NpcDomain()
+        public NpcDomain(NpcStateData initialState)
         {
-            _npcStates = new Dictionary<string, NpcStateData>();
+            _state = initialState;
         }
 
-        #endregion
-
-        #region Registry Methods
-
-        public void RegisterNpc(string npcId, bool canBePossessed = true, PatrolData patrol = default, UnityEngine.Vector2 startPosition = default)
+        public NpcStateData GetState()
         {
-            if (string.IsNullOrEmpty(npcId)) return;
-
-            if (!_npcStates.ContainsKey(npcId))
-            {
-                _npcStates[npcId] = new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed, patrol, startPosition);
-            }
+            return _state;
         }
 
-        public void UnregisterNpc(string npcId)
+        public void SetPosition(UnityEngine.Vector2 position)
         {
-            if (_npcStates.ContainsKey(npcId))
-            {
-                _npcStates.Remove(npcId);
-            }
+            _state = _state.WithPosition(position);
         }
 
-        public NpcStateData? GetState(string npcId)
+        public void SetPatrolDirection(bool movingToB)
         {
-            if (_npcStates.TryGetValue(npcId, out var state))
-            {
-                return state;
-            }
-            return null;
+            _state = _state.WithPatrolDirection(movingToB);
         }
 
-        public void SetPatrolDirection(string npcId, bool movingToB)
+        private void SetState(NpcStateData newState)
         {
-            if (!_npcStates.TryGetValue(npcId, out var currentState)) return;
-            _npcStates[npcId] = currentState.WithPatrolDirection(movingToB);
+            NpcStateData previous = _state;
+            _state = newState;
+            OnStateChanged?.Invoke(this, new NpcStateChangedEventArgs(_state.NpcId, previous, newState));
         }
 
-        public UnityEngine.Vector2 IdleAction(
-            string npcId,
+        public virtual UnityEngine.Vector2 IdleAction(
             UnityEngine.Vector2 currentPosition,
             UnityEngine.Vector2 pointA,
             UnityEngine.Vector2 pointB,
@@ -110,10 +58,9 @@ namespace NPCSystem.Domain
             float deltaTime,
             float reachThreshold)
         {
-            if (!_npcStates.TryGetValue(npcId, out var currentState)) return currentPosition;
-            if (currentState.Phase != NpcPhase.Idle) return currentPosition;
+            if (_state.Phase != NpcPhase.Idle) return currentPosition;
 
-            var patrol = currentState.Patrol;
+            var patrol = _state.Patrol;
             UnityEngine.Vector2 targetPoint = patrol.MovingToB ? pointB : pointA;
 
             UnityEngine.Vector2 newPosition = UnityEngine.Vector2.MoveTowards(
@@ -125,38 +72,34 @@ namespace NPCSystem.Domain
             float distance = UnityEngine.Vector2.Distance(newPosition, targetPoint);
             if (distance <= reachThreshold)
             {
-                currentState = currentState.WithPatrolDirection(!patrol.MovingToB);
+                _state = _state.WithPatrolDirection(!patrol.MovingToB);
             }
 
-            _npcStates[npcId] = currentState.WithPosition(newPosition);
+            _state = _state.WithPosition(newPosition);
             return newPosition;
         }
 
-        public virtual UnityEngine.Vector2 PossessedAction(string npcId, UnityEngine.Vector2 targetPosition)
+        public virtual UnityEngine.Vector2 PossessedAction(UnityEngine.Vector2 targetPosition)
         {
-            if (!_npcStates.TryGetValue(npcId, out var currentState)) return targetPosition;
-            if (currentState.Phase != NpcPhase.Possessed) return currentState.Position;
+            if (_state.Phase != NpcPhase.Possessed) return _state.Position;
 
-            UnityEngine.Debug.Log($"[NpcDomain] PossessedAction: {npcId}");
-            _npcStates[npcId] = currentState.WithPosition(targetPosition);
+            UnityEngine.Debug.Log($"[NpcDomain] PossessedAction: {_state.NpcId}");
+            _state = _state.WithPosition(targetPosition);
             return targetPosition;
         }
-
-        #endregion
 
         #region State Transition Methods
 
         /// <summary>
         /// Possess an NPC. Only works when Idle.
         /// </summary>
-        public bool Possess(string npcId)
+        public bool Possess()
         {
-            if (!_npcStates.TryGetValue(npcId, out var currentState)) return false;
-            if (!currentState.IsSeducible) return false;
+            if (!_state.IsSeducible) return false;
 
-            var newState = currentState.WithPhase(NpcPhase.Possessed);
-            TransitionTo(npcId, currentState, newState);
-            OnPossessed?.Invoke(this, npcId);
+            var newState = _state.WithPhase(NpcPhase.Possessed);
+            SetState(newState);
+            OnPossessed?.Invoke(this, _state.NpcId);
 
             return true;
         }
@@ -164,17 +107,16 @@ namespace NPCSystem.Domain
         /// <summary>
         /// Release an NPC from possession. Enters stunned state.
         /// </summary>
-        public bool Release(string npcId, float stunDuration = 2f)
+        public bool Release(float stunDuration = 2f)
         {
-            if (!_npcStates.TryGetValue(npcId, out var currentState)) return false;
-            if (currentState.Phase != NpcPhase.Possessed) return false;
+            if (_state.Phase != NpcPhase.Possessed) return false;
 
-            var newState = currentState
+            var newState = _state
                 .WithPhase(NpcPhase.Stunned)
                 .WithStunRemaining(stunDuration);
 
-            TransitionTo(npcId, currentState, newState);
-            OnReleased?.Invoke(this, npcId);
+            SetState(newState);
+            OnReleased?.Invoke(this, _state.NpcId);
 
             return true;
         }
@@ -182,64 +124,31 @@ namespace NPCSystem.Domain
         /// <summary>
         /// Update stun timer. Call from Update loop.
         /// </summary>
-        public bool UpdateStun(string npcId, float deltaTime)
+        public bool UpdateStun(float deltaTime)
         {
-            if (!_npcStates.TryGetValue(npcId, out var currentState)) return false;
-            if (currentState.Phase != NpcPhase.Stunned) return false;
+            if (_state.Phase != NpcPhase.Stunned) return false;
 
-            float newStunTime = currentState.StunRemaining - deltaTime;
+            float newStunTime = _state.StunRemaining - deltaTime;
 
             if (newStunTime <= 0f)
             {
-                var newState = currentState.Reset();
-                TransitionTo(npcId, currentState, newState);
-                OnStunEnded?.Invoke(this, npcId);
+                var newState = _state.Reset();
+                SetState(newState);
+                OnStunEnded?.Invoke(this, _state.NpcId);
                 return true;
             }
 
-            _npcStates[npcId] = currentState.WithStunRemaining(newStunTime);
+            _state = _state.WithStunRemaining(newStunTime);
             return false;
         }
 
         /// <summary>
         /// Force reset to idle
         /// </summary>
-        public void ForceReset(string npcId)
+        public void ForceReset()
         {
-            if (!_npcStates.TryGetValue(npcId, out var currentState)) return;
-            var newState = currentState.Reset();
-            TransitionTo(npcId, currentState, newState);
-        }
-
-        #endregion
-
-        #region Private Methods
-
-        private void TransitionTo(string npcId, NpcStateData previousState, NpcStateData newState)
-        {
-            _npcStates[npcId] = newState;
-            OnStateChanged?.Invoke(this, new NpcStateChangedEventArgs(npcId, previousState, newState));
-        }
-
-        #endregion
-
-        #region Query Methods
-
-        public IEnumerable<string> GetAllNpcIds()
-        {
-            return _npcStates.Keys;
-        }
-
-        public string GetPossessedNpcId()
-        {
-            foreach (var kvp in _npcStates)
-            {
-                if (kvp.Value.IsUnderControl)
-                {
-                    return kvp.Key;
-                }
-            }
-            return null;
+            var newState = _state.Reset();
+            SetState(newState);
         }
 
         #endregion

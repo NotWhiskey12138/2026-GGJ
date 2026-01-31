@@ -36,6 +36,11 @@ namespace NPCSystem.Controller
 
         public string NpcId => npcId;
         public bool CanBePossessed => canBePossessed;
+        public NpcStateData State => domain != null
+            ? domain.GetState()
+            : new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed);
+
+        protected NpcDomain domain;
 
         private void Awake()
         {
@@ -45,66 +50,52 @@ namespace NPCSystem.Controller
             }
         }
 
-        private void OnEnable()
+        protected virtual void OnEnable()
         {
             _registry[npcId] = this;
 
             Vector2 startPoint = GetPatrolPointA();
             transform.position = startPoint;
 
-            NpcDomain.Instance.RegisterNpc(npcId, canBePossessed, default, startPoint);
-
-            NpcDomain.Instance.OnStateChanged += HandleStateChanged;
+            domain = CreateDomain(startPoint);
+            domain.OnStateChanged += HandleStateChanged;
             MaskDomain.Instance.OnPossessionStarted += HandlePossessionStarted;
             MaskDomain.Instance.OnPossessionEnded += HandlePossessionEnded;
         }
 
-        private void OnDisable()
+        protected virtual void OnDisable()
         {
-            NpcDomain.Instance.OnStateChanged -= HandleStateChanged;
+            if (domain != null)
+            {
+                domain.OnStateChanged -= HandleStateChanged;
+            }
             MaskDomain.Instance.OnPossessionStarted -= HandlePossessionStarted;
             MaskDomain.Instance.OnPossessionEnded -= HandlePossessionEnded;
 
-            NpcDomain.Instance.UnregisterNpc(npcId);
             _registry.Remove(npcId);
         }
 
-        private void Update()
+        protected virtual void Update()
         {
-            var state = NpcDomain.Instance.GetState(npcId);
-
-            if (!state.HasValue || state.Value.Phase != NpcPhase.Stunned)
+            if (domain == null) return;
+            var state = domain.GetState();
+            if (ShouldPatrol(state.Phase))
             {
                 UpdateMovement();
             }
-            else if (state.Value.Phase == NpcPhase.Stunned)
+            else if (state.Phase == NpcPhase.Stunned)
             {
-                NpcDomain.Instance.UpdateStun(npcId, Time.deltaTime);
+                domain.UpdateStun(Time.deltaTime);
             }
         }
 
-        private void UpdateMovement()
+        protected virtual void UpdateMovement()
         {
-            var state = NpcDomain.Instance.GetState(npcId);
-            if (!state.HasValue)
-            {
-                Debug.Log($"[{npcId}] No state found");
-                return;
-            }
-
+            if (domain == null) return;
             Vector2 pointA = GetPatrolPointA();
             Vector2 pointB = GetPatrolPointB();
 
-            Vector2 newPosition = NpcDomain.Instance.IdleAction(
-                npcId,
-                transform.position,
-                pointA,
-                pointB,
-                walkSpeed,
-                Time.deltaTime,
-                reachThreshold
-            );
-
+            Vector2 newPosition = IdleAction(domain.GetState().Position, pointA, pointB, walkSpeed, Time.deltaTime, reachThreshold);
             transform.position = newPosition;
         }
 
@@ -120,27 +111,51 @@ namespace NPCSystem.Controller
 
         public bool IsSeducible()
         {
-            var state = NpcDomain.Instance.GetState(npcId);
-            if (!state.HasValue) return false;
-            return state.Value.IsSeducible;
+            return domain != null && domain.GetState().IsSeducible;
         }
 
-        public void HandlePossessedClick(GameObject target)
+        protected virtual NpcDomain CreateDomain(Vector2 startPoint)
+        {
+            return new NpcDomain(new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed, default, startPoint));
+        }
+
+        public virtual void HandlePossessedClick(GameObject target)
         {
             if (target == null) return;
+            if (domain == null) return;
 
-            var state = NpcDomain.Instance.GetState(npcId);
-            if (!state.HasValue || state.Value.Phase != NpcPhase.Possessed) return;
+            if (domain.GetState().Phase != NpcPhase.Possessed) return;
 
             if (!IsValidPossessedTarget(target)) return;
 
-            Vector2 newPosition = NpcDomain.Instance.PossessedAction(npcId, target.transform.position);
+            Vector2 newPosition = PossessedAction(target.transform.position);
             transform.position = newPosition;
         }
 
         protected virtual bool IsValidPossessedTarget(GameObject target)
         {
             return true;
+        }
+
+        protected virtual Vector2 IdleAction(
+            Vector2 currentPosition,
+            Vector2 pointA,
+            Vector2 pointB,
+            float speed,
+            float deltaTime,
+            float threshold)
+        {
+            return domain.IdleAction(currentPosition, pointA, pointB, speed, deltaTime, threshold);
+        }
+
+        protected virtual Vector2 PossessedAction(Vector2 targetPosition)
+        {
+            return domain.PossessedAction(targetPosition);
+        }
+
+        protected virtual bool ShouldPatrol(NpcPhase phase)
+        {
+            return phase == NpcPhase.Idle;
         }
 
         #region Event Handlers
@@ -157,26 +172,29 @@ namespace NPCSystem.Controller
             }
         }
 
-        private void HandlePossessionStarted(object sender, string targetNpcId)
+        protected virtual void HandlePossessionStarted(object sender, string targetNpcId)
         {
             if (targetNpcId != npcId) return;
+            if (domain == null) return;
 
-            NpcDomain.Instance.Possess(npcId);
+            if (!domain.GetState().IsSeducible) return;
+            domain.Possess();
             Debug.Log($"[{npcId}] Possessed by mask.");
         }
 
-        private void HandlePossessionEnded(object sender, string targetNpcId)
+        protected virtual void HandlePossessionEnded(object sender, string targetNpcId)
         {
             if (targetNpcId != npcId) return;
+            if (domain == null) return;
 
             if (stunOnRelease)
             {
-                NpcDomain.Instance.Release(npcId, stunDuration);
+                domain.Release(stunDuration);
                 Debug.Log($"[{npcId}] Released, stunned for {stunDuration}s.");
             }
             else
             {
-                NpcDomain.Instance.Release(npcId, 0f);
+                domain.Release(0f);
                 Debug.Log($"[{npcId}] Released, no stun.");
             }
         }
@@ -198,13 +216,11 @@ namespace NPCSystem.Controller
 
         #region Editor
 
-        private void OnDrawGizmosSelected()
+        protected virtual void OnDrawGizmosSelected()
         {
-            var state = Application.isPlaying ? NpcDomain.Instance.GetState(npcId) : null;
-
-            if (state.HasValue)
+            if (Application.isPlaying && domain != null)
             {
-                switch (state.Value.Phase)
+                switch (domain.GetState().Phase)
                 {
                     case NpcPhase.Idle:
                         Gizmos.color = Color.green;

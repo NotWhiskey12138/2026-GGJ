@@ -23,8 +23,7 @@ namespace NPCSystem
         {
             get
             {
-                var state = NpcDomain.Instance.GetState(_controller.NpcId);
-                return state?.Phase ?? NpcPhase.Idle;
+                return _controller != null ? _controller.State.Phase : NpcPhase.Idle;
             }
         }
 
