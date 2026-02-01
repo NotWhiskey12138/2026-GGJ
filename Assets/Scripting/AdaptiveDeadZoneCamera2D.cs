@@ -2,9 +2,9 @@ using UnityEngine;
 
 /// <summary>
 /// 2D Deadzone camera:
-/// - ����� deadZone �ڣ��������
-/// - ���� deadZone���������ҡ��ƻص� deadZone ��Ե��
-/// - �����ٶȻ��桰�������� + ����뿪�ٶȡ�����Ӧ���
+/// - 玩家在 deadZone 内：相机不动
+/// - 超出 deadZone：相机把玩家“推回到 deadZone 边缘”
+/// - 跟随速度会随“超出距离 + 玩家离开速度”自适应变快
 /// </summary>
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Camera))]
@@ -12,15 +12,15 @@ public class AdaptiveDeadzoneCamera2D : MonoBehaviour
 {
     [Header("Target")]
     public Transform target;
-    [Tooltip("��ѡ������� Rigidbody2D���ٶȻ��׼ȷ")]
+    [Tooltip("可选：如果有 Rigidbody2D，速度会更准确")]
     public Rigidbody2D targetRb;
 
     [Header("Framing")]
-    [Tooltip("��ͷ��ͼƫ�ƣ�y>0 ������ҿ�������ƫ�£����������Ϸ���")]
+    [Tooltip("镜头构图偏移：y>0 会让玩家看起来更偏下（相机在玩家上方）")]
     public Vector2 offset = new Vector2(0f, 1.5f);
 
     [Header("Dead Zone (world units)")]
-    [Tooltip("deadZone.x / deadZone.y �ǡ��뾶�������� x=2 ��ʾ���Ҹ� 2 �����絥λ������")]
+    [Tooltip("deadZone.x / deadZone.y 是‘半径’：例如 x=2 表示左右各 2 个世界单位的死区")]
     public Vector2 deadZone = new Vector2(2.0f, 1.2f);
 
     [Header("Follow Axes")]
@@ -28,26 +28,26 @@ public class AdaptiveDeadzoneCamera2D : MonoBehaviour
     public bool followY = true;
 
     [Header("Speed Adaptation")]
-    [Tooltip("����ʱ��ƽ��ʱ�䣨��=���ϡ������������ϡ���")]
+    [Tooltip("最慢时的平滑时间（大=更拖、更“缓缓跟上”）")]
     public float maxSmoothTime = 0.35f;
 
-    [Tooltip("���ʱ��ƽ��ʱ�䣨С=����������׷�ϣ�")]
+    [Tooltip("最快时的平滑时间（小=更紧、更快追上）")]
     public float minSmoothTime = 0.08f;
 
-    [Tooltip("���� deadZone �ľ���Խ�󣬸���Խ�죨���� 1~4��")]
+    [Tooltip("超出 deadZone 的距离越大，跟随越快（建议 1~4）")]
     public float distanceResponse = 2.0f;
 
-    [Tooltip("��ҡ�Զ�뾵ͷ���ġ����ٶ�Խ�󣬸���Խ�죨���� 0.05~0.3��")]
+    [Tooltip("玩家‘远离镜头中心’的速度越大，跟随越快（建议 0.05~0.3）")]
     public float velocityResponse = 0.12f;
 
-    [Tooltip("���� SmoothDamp ������ƶ��ٶȣ���ֹ���˶���")]
+    [Tooltip("限制 SmoothDamp 的最大移动速度，防止极端抖动")]
     public float maxFollowSpeed = 60f;
 
     [Header("Z / Pixel")]
     public bool lockZ = true;
     public float fixedZ = -10f;
 
-    [Tooltip("���ط��ѡ�������� PPU ����������꣬�������ض���")]
+    [Tooltip("像素风可选：开启后按 PPU 对齐相机坐标，减少像素抖动")]
     public bool pixelSnap = false;
     public int pixelsPerUnit = 100;
 
@@ -80,14 +80,14 @@ public class AdaptiveDeadzoneCamera2D : MonoBehaviour
         if (target == null) return;
 
         Vector3 camPos = transform.position;
-        Vector3 aim = (Vector3)offset + target.position;   // ����ϣ������ס���ĵ㣨����ͼƫ�ƣ�
+        Vector3 aim = (Vector3)offset + target.position;   // 我们希望“盯住”的点（含构图偏移）
         Vector3 delta = aim - camPos;
 
-        // ���㳬�� deadZone ������ֻ�������ƶ������
+        // 计算超出 deadZone 的量（只超出才推动相机）
         float ex = Mathf.Max(0f, Mathf.Abs(delta.x) - deadZone.x);
         float ey = Mathf.Max(0f, Mathf.Abs(delta.y) - deadZone.y);
 
-        // Ŀ��λ�ã��� target �ƻ� deadZone ��Ե������ǿ�о��У���˸��ȣ�
+        // 目标位置：把 target 推回 deadZone 边缘（不是强行居中，因此更稳）
         Vector3 desired = camPos;
         if (followX && ex > 0f) desired.x += Mathf.Sign(delta.x) * ex;
         if (followY && ey > 0f) desired.y += Mathf.Sign(delta.y) * ey;
@@ -96,7 +96,7 @@ public class AdaptiveDeadzoneCamera2D : MonoBehaviour
 
         float excessDist = Mathf.Sqrt(ex * ex + ey * ey);
 
-        // ��������ٶȣ��� Rigidbody2D ��׼��������λ�ƹ��㣩
+        // 计算玩家速度（用 Rigidbody2D 更准；否则用位移估算）
         Vector2 v;
         if (targetRb != null) v = targetRb.linearVelocity;
         else
@@ -106,7 +106,7 @@ public class AdaptiveDeadzoneCamera2D : MonoBehaviour
         }
         _lastTargetPos = target.position;
 
-        // ֻ���ġ�Զ�뾵ͷ���ķ��򡱵��ٶȷ�����ԽԶ��ԽҪ׷��
+        // 只关心“远离镜头中心方向”的速度分量（越远离越要追）
         float speedAway = 0f;
         if (excessDist > 0.0001f)
         {
@@ -114,10 +114,10 @@ public class AdaptiveDeadzoneCamera2D : MonoBehaviour
             speedAway = Mathf.Max(0f, Vector2.Dot(v, dir));
         }
 
-        // ����Ӧ���٣�����Խ���뿪Խ�� �� smoothTime ԽС������׷�ϣ�
+        // 自适应加速：距离越大、离开越快 → smoothTime 越小（更快追上）
         float boost = excessDist * distanceResponse + speedAway * velocityResponse;
 
-        // �� boost ӳ�䵽 0~1�������� 0~6 ���ã���Ҳ���Ե���
+        // 把 boost 映射到 0~1（经验上 0~6 够用，你也可以调）
         float t = Mathf.Clamp01(boost / 6f);
         float smoothTime = Mathf.Lerp(maxSmoothTime, minSmoothTime, t);
 
@@ -145,7 +145,7 @@ public class AdaptiveDeadzoneCamera2D : MonoBehaviour
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
-        // ���� deadZone�����絥λ�����������
+        // 画出 deadZone（世界单位）方便你调参
         Gizmos.color = new Color(0.2f, 0.9f, 1.0f, 0.25f);
         Vector3 c = transform.position;
         Vector3 size = new Vector3(deadZone.x * 2f, deadZone.y * 2f, 0.1f);
