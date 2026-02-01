@@ -65,5 +65,8 @@ TagManager:
   - name: NPC
     uniqueID: 2629368229
     locked: 0
+  - name: Partivle System
+    uniqueID: 2991714869
+    locked: 0
   m_RenderingLayers:
   - Default
