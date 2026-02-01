@@ -26,9 +26,6 @@ namespace NPCSystem.Controller
         [SerializeField] private float stunDuration = 2f;
         [SerializeField] private bool stunOnRelease = true;
 
-        [Header("Movement Settings")]
-        [SerializeField] private float walkSpeed = 2f;
-
         public string NpcId => npcId;
         public bool CanBePossessed => canBePossessed;
         public NpcStateData State => domain != null
@@ -36,12 +33,20 @@ namespace NPCSystem.Controller
             : new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed);
 
         protected NpcDomain domain;
+        protected Rigidbody2D rb;
+        private Vector2 possessedTargetPosition;
 
         private void Awake()
         {
             if (string.IsNullOrEmpty(npcId))
             {
                 npcId = $"npc_{GetInstanceID()}";
+            }
+
+            rb = GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                Debug.LogWarning($"[{npcId}] Missing Rigidbody2D. Movement will use transform.");
             }
         }
 
@@ -67,7 +72,7 @@ namespace NPCSystem.Controller
             _registry.Remove(npcId);
         }
 
-        protected virtual void Update()
+        protected virtual void FixedUpdate()
         {
             if (domain == null) return;
             var state = domain.GetState();
@@ -84,8 +89,8 @@ namespace NPCSystem.Controller
         protected virtual void UpdateMovement()
         {
             if (domain == null) return;
-            Vector2 newPosition = IdleAction(domain.GetState().Position, walkSpeed, Time.deltaTime);
-            transform.position = newPosition;
+            Vector2 newPosition = IdleAction();
+            MoveTo(newPosition);
         }
 
         public bool IsSeducible()
@@ -107,8 +112,9 @@ namespace NPCSystem.Controller
 
             if (!IsValidPossessedTarget(target)) return;
 
-            Vector2 newPosition = PossessedAction(target.transform.position);
-            transform.position = newPosition;
+            possessedTargetPosition = target.transform.position;
+            Vector2 newPosition = PossessedAction();
+            MoveTo(newPosition);
         }
 
         protected virtual bool IsValidPossessedTarget(GameObject target)
@@ -116,17 +122,14 @@ namespace NPCSystem.Controller
             return true;
         }
 
-        protected virtual Vector2 IdleAction(
-            Vector2 currentPosition,
-            float speed,
-            float deltaTime)
+        protected virtual Vector2 IdleAction()
         {
-            return currentPosition;
+            return GetCurrentPosition();
         }
 
-        protected virtual Vector2 PossessedAction(Vector2 targetPosition)
+        protected virtual Vector2 PossessedAction()
         {
-            return domain.PossessedAction(targetPosition);
+            return domain.PossessedAction(possessedTargetPosition);
         }
 
         protected virtual bool ShouldPatrol(NpcPhase phase)
@@ -176,6 +179,31 @@ namespace NPCSystem.Controller
         }
 
         #endregion
+
+        protected Vector2 GetCurrentPosition()
+        {
+            return rb != null ? rb.position : (Vector2)transform.position;
+        }
+
+        protected void MoveTo(Vector2 position)
+        {
+            if (rb != null)
+            {
+                if (rb.bodyType != RigidbodyType2D.Dynamic)
+                {
+                    rb.bodyType = RigidbodyType2D.Dynamic;
+                }
+                float dt = Time.fixedDeltaTime;
+                if (dt > 0f)
+                {
+                    rb.linearVelocity = (position - rb.position) / dt;
+                }
+            }
+            else
+            {
+                transform.position = position;
+            }
+        }
 
         #region Input Detection
 

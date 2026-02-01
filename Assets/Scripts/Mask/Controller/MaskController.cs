@@ -17,7 +17,6 @@ namespace MaskSystem.Controller
         private Transform originalParent;
         private RigidbodyType2D originalBodyType;
         private Vector3 lastParentPosition;
-        private Vector2 parentVelocity;
         private Rigidbody2D rb;
         private Collider2D maskCollider;
         private Renderer[] maskRenderers;
@@ -51,7 +50,7 @@ namespace MaskSystem.Controller
         {
             if (MaskDomain.Instance.IsPossessing)
             {
-                UpdateParentVelocity();
+                lastParentPosition = transform.parent != null ? transform.parent.position : lastParentPosition;
             }
         }
 
@@ -75,24 +74,9 @@ namespace MaskSystem.Controller
             {
                 transform.SetParent(targetNpc.transform);
                 lastParentPosition = targetNpc.transform.position;
-                parentVelocity = Vector2.zero;
             }
 
             transform.localPosition = attachOffset;
-        }
-
-        private void UpdateParentVelocity()
-        {
-            Transform parent = transform.parent;
-            if (parent == null) return;
-
-            float deltaTime = Time.deltaTime;
-            if (deltaTime <= 0f) return;
-
-            Vector3 currentParentPosition = parent.position;
-            Vector3 delta = currentParentPosition - lastParentPosition;
-            parentVelocity = new Vector2(delta.x / deltaTime, delta.y / deltaTime);
-            lastParentPosition = currentParentPosition;
         }
 
         #region Public Methods
@@ -140,7 +124,6 @@ namespace MaskSystem.Controller
             transform.SetParent(npcController.transform);
             transform.localPosition = attachOffset;
             lastParentPosition = npcController.transform.position;
-            parentVelocity = Vector2.zero;
 
             // Disable physics
             if (rb != null)
@@ -175,8 +158,11 @@ namespace MaskSystem.Controller
             }
 
             string targetId = MaskDomain.Instance.CurrentTargetId;
-            Vector2 inheritedVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
-            Debug.Log($"[MaskController] Release self velocity: {inheritedVelocity}");
+            Rigidbody2D parentRb = transform.parent != null ? transform.parent.GetComponent<Rigidbody2D>() : null;
+            Vector2 inheritedVelocity = parentRb != null ? parentRb.linearVelocity : Vector2.zero;
+            Vector2 selfVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
+            Debug.Log($"[MaskController] Release parent velocity: {inheritedVelocity}");
+            Debug.Log($"[MaskController] Release self velocity: {selfVelocity}");
 
             if (!MaskDomain.Instance.Release())
             {

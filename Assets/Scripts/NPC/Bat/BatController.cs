@@ -27,9 +27,9 @@ namespace NPCSystem.Bat
         protected override void OnEnable()
         {
             Vector2 startPoint = GetPatrolPointA();
-            transform.position = startPoint;
+            MoveTo(startPoint);
             base.OnEnable();
-            homePosition = transform.position;
+            homePosition = GetCurrentPosition();
         }
 
         protected override NpcDomain CreateDomain(Vector2 startPoint)
@@ -42,7 +42,7 @@ namespace NPCSystem.Bat
             );
         }
 
-        protected override void Update()
+        protected override void FixedUpdate()
         {
             if (domain == null) return;
 
@@ -56,7 +56,7 @@ namespace NPCSystem.Bat
             if (state.Phase == NpcPhase.Possessed && hasPossessedTarget)
             {
                 Vector2 newPosition = domain.PossessedAction(possessedTarget);
-                transform.position = newPosition;
+                MoveTo(newPosition);
 
                 if (Vector2.Distance(newPosition, possessedTarget) <= possessedReachThreshold)
                 {
@@ -76,14 +76,14 @@ namespace NPCSystem.Bat
             Vector2 pointA = GetPatrolPointA();
             Vector2 pointB = GetPatrolPointB();
             Vector2 newPosition = domain.IdleAction(
-                domain.GetState().Position,
+                GetCurrentPosition(),
                 pointA,
                 pointB,
                 patrolSpeed,
-                Time.deltaTime,
+                Time.fixedDeltaTime,
                 reachThreshold
             );
-            transform.position = newPosition;
+            MoveTo(newPosition);
         }
 
         public override void HandlePossessedClick(GameObject target)
