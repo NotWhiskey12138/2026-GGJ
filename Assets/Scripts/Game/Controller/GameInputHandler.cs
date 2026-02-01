@@ -72,8 +72,19 @@ namespace Game.Controller
             Vector2 worldPosition = mainCamera.ScreenToWorldPoint(screenPosition);
             Debug.Log($"Tap world position: {worldPosition}");
 
-            // 2D check at tap position
-            Collider2D hit = Physics2D.OverlapPoint(worldPosition);
+            // 2D check at tap position, excluding Player tag
+            Collider2D hit = null;
+            Collider2D[] hits = Physics2D.OverlapPointAll(worldPosition);
+            if (hits != null)
+            {
+                for (int i = 0; i < hits.Length; i++)
+                {
+                    if (hits[i] == null) continue;
+                    if (hits[i].CompareTag("Player")) continue;
+                    hit = hits[i];
+                    break;
+                }
+            }
 
             if (hit != null)
             {
