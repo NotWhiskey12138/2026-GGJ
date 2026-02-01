@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using NPCSystem.Domain;
 using MaskSystem.Domain;
+using NPCSystem.Abilities;
 
 namespace NPCSystem.Controller
 {
@@ -35,6 +36,7 @@ namespace NPCSystem.Controller
         protected NpcDomain domain;
         protected Rigidbody2D rb;
         private Vector2 possessedTargetPosition;
+        private NpcAbility ability;
 
         private void Awake()
         {
@@ -48,6 +50,8 @@ namespace NPCSystem.Controller
             {
                 Debug.LogWarning($"[{npcId}] Missing Rigidbody2D. Movement will use transform.");
             }
+
+            ability = GetComponentInChildren<NpcAbility>(true);
         }
 
         protected virtual void OnEnable()
@@ -158,6 +162,8 @@ namespace NPCSystem.Controller
 
             if (!domain.GetState().IsSeducible) return;
             domain.Possess();
+            ability?.OnPossessedStart();
+            Debug.Log($"[{npcId}] Ability activated: {(ability != null ? ability.GetType().Name : "None")}");
             Debug.Log($"[{npcId}] Possessed by mask.");
         }
 
@@ -176,6 +182,23 @@ namespace NPCSystem.Controller
                 domain.Release(0f);
                 Debug.Log($"[{npcId}] Released, no stun.");
             }
+
+            ability?.OnPossessedEnd();
+            Debug.Log($"[{npcId}] Ability deactivated: {(ability != null ? ability.GetType().Name : "None")}");
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (domain == null) return;
+            if (domain.GetState().Phase != NpcPhase.Possessed) return;
+            ability?.OnTriggerEnter2D(other);
+        }
+
+        private void OnTriggerStay2D(Collider2D other)
+        {
+            if (domain == null) return;
+            if (domain.GetState().Phase != NpcPhase.Possessed) return;
+            ability?.OnTriggerStay2D(other);
         }
 
         #endregion
@@ -198,10 +221,6 @@ namespace NPCSystem.Controller
                 {
                     Vector2 delta = position - rb.position;
                     Vector2 velocity = delta / dt;
-                    if (velocity.sqrMagnitude > 100f)
-                    {
-                        Debug.LogWarning($"[{npcId}] Large velocity: {velocity} (current={rb.position}, target={position}, dt={dt})");
-                    }
                     rb.linearVelocity = velocity;
                 }
             }

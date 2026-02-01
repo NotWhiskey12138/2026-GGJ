@@ -16,6 +16,7 @@ public class FrogTonguePullImpulse : MonoBehaviour
 
     [Header("Auto Trigger")]
     [SerializeField] private float cooldown = 1.0f;
+    [SerializeField] private bool autoScanEnabled = true;
     [SerializeField] private bool requireAirborne = false; // 你要地面也能拉就关掉
     [SerializeField] private Transform groundCheck;
     [SerializeField] private float groundCheckRadius = 0.12f;
@@ -36,6 +37,12 @@ public class FrogTonguePullImpulse : MonoBehaviour
     //bee
     private Collider2D lastHookCollider;
 
+    public bool AutoScanEnabled
+    {
+        get => autoScanEnabled;
+        set => autoScanEnabled = value;
+    }
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -48,12 +55,28 @@ public class FrogTonguePullImpulse : MonoBehaviour
 
         if (requireAirborne && IsGrounded()) return;
 
+        if (!autoScanEnabled) return;
+
         if (TryFindHook(out hookPoint))
         {
             Debug.Log($"[FrogTongue] Hook found at {hookPoint}, starting pull.");
             AutoTonguePull(hookPoint);
             
         }
+    }
+
+    public bool TryManualPull(Collider2D target)
+    {
+        if (target == null) return false;
+        if (busy || cdTimer > 0f) return false;
+        if (requireAirborne && IsGrounded()) return false;
+
+        Vector2 origin = mouth ? (Vector2)mouth.position : rb.position;
+        Vector2 point = target.ClosestPoint(origin);
+        lastHookCollider = target;
+        Debug.Log($"[FrogTongue] Manual pull to {point} (target={target.name})");
+        AutoTonguePull(point);
+        return true;
     }
 
     bool TryFindHook(out Vector2 best)
