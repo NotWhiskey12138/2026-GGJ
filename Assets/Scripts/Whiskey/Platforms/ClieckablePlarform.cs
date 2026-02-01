@@ -55,7 +55,14 @@ public class ClickablePlatform : MonoBehaviour
         // 切换状态
         ToggleState();
 
-        Instantiate(bee, transform.position, Quaternion.identity);
+        Vector3 spawnPos = transform.position + Vector3.down * 1f;
+        GameObject b = Instantiate(bee, spawnPos, Quaternion.identity);
+
+// 从更下面弹到 spawnPos
+        b.transform.DOMoveY(spawnPos.y, 0.3f)
+            .From(spawnPos.y - 0.6f)
+            .SetEase(Ease.OutBack);
+
         
         // 点击动画 - 缩小
         scaleTween?.Kill();
