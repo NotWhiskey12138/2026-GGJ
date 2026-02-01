@@ -15,13 +15,17 @@ namespace NPCSystem.Frog
         [SerializeField] private float groundCheckRadius = 0.12f;
         [SerializeField] private LayerMask groundLayer;
         [SerializeField] private bool debugGrounded = false;
+        [SerializeField] private bool disableEdgeDetectorInAir = true;
 
         private FrogDomain frogDomain;
         private FrogAbility frogAbility;
+        private EnvironmentSystem.EdgeDetector[] edgeDetectors;
+        private bool edgeDetectorsInitialized;
 
         protected override void OnEnable()
         {
             frogAbility = GetComponentInChildren<FrogAbility>(true);
+            CacheEdgeDetectors();
             base.OnEnable();
         }
 
@@ -43,7 +47,9 @@ namespace NPCSystem.Frog
 
         protected override void UpdateMovement()
         {
-            if (requireGroundedForPatrol && !IsGrounded())
+            bool grounded = !requireGroundedForPatrol || IsGrounded();
+            UpdateEdgeDetectors(grounded);
+            if (requireGroundedForPatrol && !grounded)
             {
                 return;
             }
@@ -84,6 +90,31 @@ namespace NPCSystem.Frog
                 Debug.Log($"[{NpcId}] IsGrounded={grounded} pos={groundCheck.position} radius={groundCheckRadius} layerMask={groundLayer.value}");
             }
             return grounded;
+        }
+
+        private void CacheEdgeDetectors()
+        {
+            edgeDetectors = GetComponentsInChildren<EnvironmentSystem.EdgeDetector>(true);
+            edgeDetectorsInitialized = true;
+        }
+
+        private void UpdateEdgeDetectors(bool grounded)
+        {
+            if (!disableEdgeDetectorInAir) return;
+            if (!edgeDetectorsInitialized)
+            {
+                CacheEdgeDetectors();
+            }
+            if (edgeDetectors == null) return;
+
+            bool enable = grounded;
+            for (int i = 0; i < edgeDetectors.Length; i++)
+            {
+                if (edgeDetectors[i] != null)
+                {
+                    edgeDetectors[i].enabled = enable;
+                }
+            }
         }
     }
 }

@@ -18,11 +18,6 @@ namespace NPCSystem.Frog
 
         [Header("Behavior")]
         [SerializeField] private bool disableAutoScanOnPossess = true;
-        [SerializeField] private float pauseBeforePull = 1.0f;
-
-        private bool isWaiting;
-        private Coroutine waitRoutine;
-        public bool IsActing { get; private set; }
 
         protected override void Awake()
         {
@@ -66,13 +61,6 @@ namespace NPCSystem.Frog
                 tongue.enabled = false;
                 tongue.AutoScanEnabled = true;
             }
-            if (waitRoutine != null)
-            {
-                StopCoroutine(waitRoutine);
-                waitRoutine = null;
-            }
-            isWaiting = false;
-            IsActing = false;
             base.OnPossessedEnd();
             Debug.Log("[FrogAbility] Possessed end: scanning disabled.");
         }
@@ -81,7 +69,7 @@ namespace NPCSystem.Frog
         {
             if (!isActive) return;
             if (tongue == null) return;
-            if (isWaiting) return;
+            if (tongue.IsBusy) return;
 
             Vector2 origin = mouth ? (Vector2)mouth.position : (Vector2)transform.position;
             Collider2D[] hits = Physics2D.OverlapCircleAll(origin, detectRadius, targetLayer);
@@ -117,36 +105,8 @@ namespace NPCSystem.Frog
             if (bestCol != null)
             {
                 Debug.Log($"[FrogAbility] Target found: {bestCol.name} at {bestCol.transform.position}");
-                waitRoutine = StartCoroutine(DelayedPull(bestCol));
+                tongue.TryManualPull(bestCol);
             }
-        }
-
-        private System.Collections.IEnumerator DelayedPull(Collider2D target)
-        {
-            isWaiting = true;
-            IsActing = true;
-            if (pauseBeforePull > 0f)
-            {
-                yield return new WaitForSeconds(pauseBeforePull);
-            }
-
-            if (isActive && tongue != null && target != null)
-            {
-                Debug.Log($"[FrogAbility] Pull after delay: {target.name}");
-                tongue.TryManualPull(target);
-            }
-
-            if (tongue != null)
-            {
-                while (tongue.IsBusy)
-                {
-                    yield return null;
-                }
-            }
-
-            isWaiting = false;
-            IsActing = false;
-            waitRoutine = null;
         }
 
         private void OnDrawGizmosSelected()
