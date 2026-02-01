@@ -17,10 +17,12 @@ namespace NPCSystem.Bat
         [SerializeField] private float reachThreshold = 0.1f;
 
         private Vector2 homePosition;
+        private BatAbility batAbility;
         protected override void OnEnable()
         {
             Vector2 startPoint = GetPatrolPointA();
             MoveTo(startPoint);
+            batAbility = GetComponentInChildren<BatAbility>(true);
             base.OnEnable();
             homePosition = GetCurrentPosition();
         }
@@ -52,6 +54,10 @@ namespace NPCSystem.Bat
         protected override void UpdateMovement()
         {
             if (domain == null) return;
+            if (batAbility != null && (batAbility.IsActing || batAbility.IsLatched))
+            {
+                return;
+            }
 
             Vector2 pointA = GetPatrolPointA();
             Vector2 pointB = GetPatrolPointB();

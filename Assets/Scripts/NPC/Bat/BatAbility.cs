@@ -17,10 +17,15 @@ namespace NPCSystem.Bat
 
         private Tween moveTween;
         private Transform currentTarget;
+        private Collider2D currentTargetCollider;
+
+        public bool IsActing { get; private set; }
+        public bool IsLatched { get; private set; }
 
         private void Update()
         {
             if (!isActive) return;
+            if (IsLatched) return;
             if (moveTween != null && moveTween.IsActive()) return;
 
             Vector2 origin = transform.position;
@@ -51,22 +56,32 @@ namespace NPCSystem.Bat
             if (bestCol == null) return;
 
             currentTarget = bestCol.transform;
-            Vector3 targetPos = currentTarget.position;
+            currentTargetCollider = bestCol;
+            Vector2 targetPoint = bestCol.ClosestPoint(origin);
 
             moveTween?.Kill();
-            moveTween = transform.DOMove(targetPos, moveDuration)
+            IsActing = true;
+            moveTween = transform.DOMove(targetPoint, moveDuration)
                 .SetEase(Ease.OutSine)
                 .OnComplete(() =>
                 {
-                    if (currentTarget != null)
+                    if (currentTargetCollider != null)
                     {
-                        float dist = Vector2.Distance(transform.position, currentTarget.position);
+                        float dist = Vector2.Distance(transform.position, targetPoint);
                         if (dist <= reachThreshold)
                         {
-                            // Keep target alive; continue scanning.
+                            IsLatched = true;
+                            transform.position = targetPoint;
+                            var rb = GetComponentInParent<Rigidbody2D>();
+                            if (rb != null)
+                            {
+                                rb.linearVelocity = Vector2.zero;
+                            }
                         }
                     }
+                    IsActing = false;
                     currentTarget = null;
+                    currentTargetCollider = null;
                 });
         }
 
@@ -74,6 +89,9 @@ namespace NPCSystem.Bat
         {
             moveTween?.Kill();
             currentTarget = null;
+            currentTargetCollider = null;
+            IsActing = false;
+            IsLatched = false;
             base.OnPossessedEnd();
         }
 
