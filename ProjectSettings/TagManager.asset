@@ -41,5 +41,23 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: BackGround
+    uniqueID: 3369555537
+    locked: 0
+  - name: Water
+    uniqueID: 3785502689
+    locked: 0
+  - name: Back
+    uniqueID: 2002189075
+    locked: 0
+  - name: Middle
+    uniqueID: 3823972643
+    locked: 0
+  - name: Front
+    uniqueID: 1513742265
+    locked: 0
+  - name: Item
+    uniqueID: 3172114457
+    locked: 0
   m_RenderingLayers:
   - Default
