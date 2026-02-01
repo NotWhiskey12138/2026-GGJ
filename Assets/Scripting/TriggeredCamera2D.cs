@@ -49,6 +49,19 @@ public class TriggeredCamera2D : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        // 有些项目玩家是在 Awake 之后才生成/启用，所以这里再找一次更稳
+        if (player == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) player = p.transform;
+        }
+
+        // 开局直接对准玩家（用 defaultOffset）
+        SnapToPlayer();
+    }
+
     public void SnapToPlayer(Vector2? offsetOverride = null)
     {
         if (player == null) return;
