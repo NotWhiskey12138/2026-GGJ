@@ -1,21 +1,33 @@
 using UnityEngine;
 
 /// <summary>
-/// 横向无限平铺：要求子物体里至少有一个 SpriteRenderer；
-/// 如果只有一个，会自动复制成两份并排；相机移动时自动把“落后的一块”挪到前面。
+/// Stable infinite tiling in X (no drift, no tearing):
+/// - Uses sprite pixel width / PPU to compute exact step
+/// - Positions tiles in LOCAL space using integer tile indices (no accumulation)
+/// - Uses 3 tiles to avoid gaps during fast camera moves
+/// - Optional 1px overlap to eliminate thin seams
 /// </summary>
 [DisallowMultipleComponent]
+[DefaultExecutionOrder(50)] // run after parallax (optional but nice)
 public class ParallaxTilingX : MonoBehaviour
 {
     public Transform cameraTransform;
 
-    [Tooltip("可选：对齐像素网格，减少像素风接缝抖动（配合你的 PPU）")]
+    [Header("Seam fix")]
+    [Tooltip("Overlap in pixels to kill thin seams (usually 1 or 2)")]
+    public int overlapPixels = 1;
+
+    [Header("Optional pixel snap")]
     public bool pixelSnap = false;
     public int pixelsPerUnit = 100;
 
-    private Transform _a;
-    private Transform _b;
-    private float _tileWidth;
+    [Header("Tiles")]
+    [Tooltip("How many tiles to keep around (2 works, 3 is safer)")]
+    [Range(2, 5)] public int tileCount = 3;
+
+    private Transform[] _tiles;
+    private float _stepLocal;     // spacing in THIS object's local units
+    private float _unitLocal;     // local snap unit
 
     private void Awake()
     {
@@ -25,83 +37,87 @@ public class ParallaxTilingX : MonoBehaviour
 
     private void Start()
     {
-        // 找第一个 SpriteRenderer
+        // Find a SpriteRenderer in children as the prototype tile
         SpriteRenderer sr = GetComponentInChildren<SpriteRenderer>();
-        if (sr == null)
+        if (sr == null || sr.sprite == null)
         {
-            Debug.LogError($"{name}: No SpriteRenderer found in children.");
+            Debug.LogError($"{name}: No SpriteRenderer/Sprite found in children.");
             enabled = false;
             return;
         }
 
-        _a = sr.transform;
+        // Ensure we have exactly tileCount tiles
+        // First tile uses existing SR transform; others are clones
+        _tiles = new Transform[tileCount];
+        _tiles[0] = sr.transform;
 
-        // 计算图块宽度（世界单位）
-        _tileWidth = sr.bounds.size.x;
-
-        // 如果只有一个 tile，就自动复制一个
-        SpriteRenderer[] srs = GetComponentsInChildren<SpriteRenderer>();
-        if (srs.Length >= 2)
+        for (int i = 1; i < tileCount; i++)
         {
-            _b = srs[1].transform;
-        }
-        else
-        {
-            GameObject clone = Instantiate(_a.gameObject, transform);
-            clone.name = _a.gameObject.name + "_B";
-            _b = clone.transform;
+            GameObject clone = Instantiate(_tiles[0].gameObject, transform);
+            clone.name = _tiles[0].gameObject.name + $"_{i}";
+            _tiles[i] = clone.transform;
         }
 
-        // 把 B 放到 A 的右边一张宽度
-        Vector3 pa = _a.localPosition;
-        _a.localPosition = pa;
+        // Compute exact width using sprite pixel width / PPU (stable!)
+        float ppu = sr.sprite.pixelsPerUnit;
+        float pixelWidth = sr.sprite.rect.width;
+        float widthWorld = pixelWidth / ppu; // width in world units before scaling
 
-        Vector3 pb = _b.localPosition;
-        pb.x = pa.x + _tileWidth;
-        pb.y = pa.y;
-        pb.z = pa.z;
-        _b.localPosition = pb;
+        // Convert to LOCAL spacing:
+        // localSpacing * parentLossyScaleX == worldWidth * tileLossyScaleX
+        float parentScaleX = transform.lossyScale.x;
+        float tileScaleX = _tiles[0].lossyScale.x;
+
+        float widthLocal = (widthWorld * tileScaleX) / Mathf.Max(0.0001f, parentScaleX);
+
+        float overlapWorld = overlapPixels / ppu; // in world units (before scaling)
+        float overlapLocal = (overlapWorld * tileScaleX) / Mathf.Max(0.0001f, parentScaleX);
+
+        _stepLocal = widthLocal - overlapLocal;
+
+        // Initial placement (local): centered around 0..(tileCount-1)
+        // We'll re-place correctly in LateUpdate anyway.
+        for (int i = 0; i < tileCount; i++)
+        {
+            SetLocalX(_tiles[i], i * _stepLocal);
+        }
+
+        _unitLocal = (pixelsPerUnit > 0) ? (1f / pixelsPerUnit) : 0f;
     }
 
     private void LateUpdate()
     {
-        if (cameraTransform == null || _a == null || _b == null) return;
+        if (cameraTransform == null || _tiles == null || _tiles.Length == 0) return;
 
-        // 保证 A 在左，B 在右（按世界坐标）
-        if (_a.position.x > _b.position.x)
-        {
-            var t = _a; _a = _b; _b = t;
-        }
+        // Camera X in this layer's local space
+        float camLocalX = transform.InverseTransformPoint(cameraTransform.position).x;
 
-        float camX = cameraTransform.position.x;
+        // Which tile index is just left of camera?
+        int idx = Mathf.FloorToInt(camLocalX / _stepLocal);
 
-        // 如果相机已经超过左块的右边缘很多，就把左块挪到右块后面
-        if (camX - _a.position.x > _tileWidth)
+        // Place tiles at idx, idx+1, idx+2... (exact positions, no drift)
+        for (int i = 0; i < _tiles.Length; i++)
         {
-            _a.position = new Vector3(_b.position.x + _tileWidth, _a.position.y, _a.position.z);
-            // 交换引用，使得下一次判断仍然正确
-            var t = _a; _a = _b; _b = t;
-        }
-        // 如果相机往左走超过右块的左边缘很多，就把右块挪到左块前面
-        else if (_b.position.x - camX > _tileWidth)
-        {
-            _b.position = new Vector3(_a.position.x - _tileWidth, _b.position.y, _b.position.z);
-            var t = _a; _a = _b; _b = t;
-        }
+            float x = (idx + i) * _stepLocal;
+            SetLocalX(_tiles[i], x);
 
-        if (pixelSnap && pixelsPerUnit > 0)
-        {
-            float unit = 1f / pixelsPerUnit;
-            SnapTransform(_a, unit);
-            SnapTransform(_b, unit);
+            if (pixelSnap && _unitLocal > 0f)
+                SnapLocal(_tiles[i], _unitLocal);
         }
     }
 
-    private static void SnapTransform(Transform t, float unit)
+    private static void SetLocalX(Transform t, float x)
     {
-        Vector3 p = t.position;
+        Vector3 p = t.localPosition;
+        p.x = x;
+        t.localPosition = p;
+    }
+
+    private static void SnapLocal(Transform t, float unit)
+    {
+        Vector3 p = t.localPosition;
         p.x = Mathf.Round(p.x / unit) * unit;
         p.y = Mathf.Round(p.y / unit) * unit;
-        t.position = p;
+        t.localPosition = p;
     }
 }
