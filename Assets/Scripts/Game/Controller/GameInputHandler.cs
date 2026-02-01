@@ -15,13 +15,6 @@ namespace Game.Controller
         [SerializeField] private Mask mask;
         [SerializeField] private Camera mainCamera;
 
-        [Header("Slow Motion")]
-        [SerializeField] private bool slowMoOnRelease = true;
-        [SerializeField] private float slowMoScale = 0.2f;
-        [SerializeField] private float slowMoDuration = 0.25f;
-
-        private float defaultFixedDeltaTime;
-        private Coroutine slowMoRoutine;
 
         private void Awake()
         {
@@ -30,7 +23,6 @@ namespace Game.Controller
                 mainCamera = Camera.main;
             }
 
-            defaultFixedDeltaTime = Time.fixedDeltaTime;
         }
 
         private void Update()
@@ -58,10 +50,6 @@ namespace Game.Controller
                 {
                     mask.Release();
                     Debug.Log("Released possession with Space key.");
-                    if (slowMoOnRelease)
-                    {
-                        TriggerSlowMo();
-                    }
                 }
             }
         }
@@ -134,30 +122,5 @@ namespace Game.Controller
             }
         }
 
-        private void TriggerSlowMo()
-        {
-            if (slowMoRoutine != null)
-            {
-                StopCoroutine(slowMoRoutine);
-            }
-            slowMoRoutine = StartCoroutine(SlowMoCoroutine());
-        }
-
-        private System.Collections.IEnumerator SlowMoCoroutine()
-        {
-            Time.timeScale = slowMoScale;
-            Time.fixedDeltaTime = defaultFixedDeltaTime * slowMoScale;
-
-            float timer = 0f;
-            while (timer < slowMoDuration)
-            {
-                timer += Time.unscaledDeltaTime;
-                yield return null;
-            }
-
-            Time.timeScale = 1f;
-            Time.fixedDeltaTime = defaultFixedDeltaTime;
-            slowMoRoutine = null;
-        }
     }
 }

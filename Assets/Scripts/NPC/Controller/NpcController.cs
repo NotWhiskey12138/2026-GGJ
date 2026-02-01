@@ -196,7 +196,13 @@ namespace NPCSystem.Controller
                 float dt = Time.fixedDeltaTime;
                 if (dt > 0f)
                 {
-                    rb.linearVelocity = (position - rb.position) / dt;
+                    Vector2 delta = position - rb.position;
+                    Vector2 velocity = delta / dt;
+                    if (velocity.sqrMagnitude > 100f)
+                    {
+                        Debug.LogWarning($"[{npcId}] Large velocity: {velocity} (current={rb.position}, target={position}, dt={dt})");
+                    }
+                    rb.linearVelocity = velocity;
                 }
             }
             else

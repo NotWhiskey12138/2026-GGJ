@@ -10,7 +10,7 @@ public class FrogTonguePullImpulse : MonoBehaviour
 
     [Header("Detect")]
     [SerializeField] private LayerMask hookLayer;          // 你可以用平台layer 或 SwingPoint layer
-    [SerializeField] private float detectRadius = 4f;
+    [SerializeField] private float detectRadius = 10f;
     [SerializeField] private float maxHookDistance = 5f;
     [SerializeField] private float forwardBias = 0.8f;     // 更倾向前方目标
 
@@ -50,6 +50,7 @@ public class FrogTonguePullImpulse : MonoBehaviour
 
         if (TryFindHook(out hookPoint))
         {
+            Debug.Log($"[FrogTongue] Hook found at {hookPoint}, starting pull.");
             AutoTonguePull(hookPoint);
             
         }
@@ -107,6 +108,7 @@ public class FrogTonguePullImpulse : MonoBehaviour
         Vector2 origin = mouth ? (Vector2)mouth.position : rb.position;
         Vector2 dir = (point - origin).normalized;
         Vector2 targetPos = rb.position + dir * pullDistance;
+        Debug.Log($"[FrogTongue] Pull to {targetPos} from {rb.position}, dir={dir}");
 
         // Tween 把青蛙短距离拉近（视觉“被拽”）
         moveTween?.Kill();
@@ -117,6 +119,7 @@ public class FrogTonguePullImpulse : MonoBehaviour
                 // 释放瞬间给冲量：惯性飞出去
                 Vector2 impulseDir = dir;
                 Vector2 imp = impulseDir * impulse + Vector2.up * impulseUpBonus;
+                Debug.Log($"[FrogTongue] Impulse {imp} (dir={impulseDir}, base={impulse}, up={impulseUpBonus})");
                 rb.AddForce(imp, ForceMode2D.Impulse);
 
                 var lickable = lastHookCollider != null ? lastHookCollider.GetComponentInParent<Lickable>() : null;
