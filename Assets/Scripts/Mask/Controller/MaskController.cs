@@ -18,6 +18,9 @@ namespace MaskSystem.Controller
         private RigidbodyType2D originalBodyType;
         private Vector3 lastParentPosition;
         private Vector2 parentVelocity;
+        private Rigidbody2D rb;
+        private Collider2D maskCollider;
+        private Renderer[] maskRenderers;
 
         #region Unity Lifecycle
 
@@ -27,7 +30,9 @@ namespace MaskSystem.Controller
             spawnPosition = transform.position;
             spawnRotation = transform.rotation;
 
-            Rigidbody2D rb = GetComponent<Rigidbody2D>();
+            rb = GetComponent<Rigidbody2D>();
+            maskCollider = GetComponent<Collider2D>();
+            maskRenderers = GetComponentsInChildren<Renderer>(true);
             if (rb != null)
             {
                 originalBodyType = rb.bodyType;
@@ -138,10 +143,20 @@ namespace MaskSystem.Controller
             parentVelocity = Vector2.zero;
 
             // Disable physics
-            Rigidbody2D rb = GetComponent<Rigidbody2D>();
             if (rb != null)
             {
                 rb.bodyType = RigidbodyType2D.Kinematic;
+            }
+            if (maskCollider != null) maskCollider.enabled = false;
+            if (maskRenderers != null)
+            {
+                for (int i = 0; i < maskRenderers.Length; i++)
+                {
+                    if (maskRenderers[i] != null)
+                    {
+                        maskRenderers[i].enabled = false;
+                    }
+                }
             }
 
             Debug.Log($"Mask possessed NPC: {npcController.NpcId}");
@@ -160,8 +175,8 @@ namespace MaskSystem.Controller
             }
 
             string targetId = MaskDomain.Instance.CurrentTargetId;
-            Rigidbody2D parentRb = transform.parent != null ? transform.parent.GetComponent<Rigidbody2D>() : null;
-            Vector2 inheritedVelocity = GetInheritedVelocity(parentRb);
+            Vector2 inheritedVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
+            Debug.Log($"[MaskController] Release self velocity: {inheritedVelocity}");
 
             if (!MaskDomain.Instance.Release())
             {
@@ -173,32 +188,24 @@ namespace MaskSystem.Controller
             transform.SetParent(null);
 
             // Enable physics and preserve current velocity, then add upward velocity
-            Rigidbody2D rb = GetComponent<Rigidbody2D>();
             if (rb != null)
             {
                 rb.bodyType = RigidbodyType2D.Dynamic;
                 rb.linearVelocity = inheritedVelocity + Vector2.up * releaseUpwardForce;
             }
+            if (maskCollider != null) maskCollider.enabled = true;
+            if (maskRenderers != null)
+            {
+                for (int i = 0; i < maskRenderers.Length; i++)
+                {
+                    if (maskRenderers[i] != null)
+                    {
+                        maskRenderers[i].enabled = true;
+                    }
+                }
+            }
 
             Debug.Log($"Mask released NPC: {targetId}");
-        }
-
-        private Vector2 GetInheritedVelocity(Rigidbody2D parentRb)
-        {
-            if (parentRb == null) return parentVelocity;
-
-            // If NPC moves via Transform while having a Rigidbody2D, linearVelocity can be zero.
-            if (parentRb.bodyType == RigidbodyType2D.Kinematic)
-            {
-                return parentVelocity;
-            }
-
-            if (parentRb.linearVelocity.sqrMagnitude <= 0.0001f)
-            {
-                return parentVelocity;
-            }
-
-            return parentRb.linearVelocity;
         }
 
         #endregion
