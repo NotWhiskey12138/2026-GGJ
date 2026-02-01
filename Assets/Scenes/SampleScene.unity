@@ -4057,6 +4057,18 @@ PrefabInstance:
       propertyPath: m_TagString
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 2629379781431461717, guid: 26c01996e0fd81a4291f311eeaf28fd4, type: 3}
+      propertyPath: impulse
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 2629379781431461717, guid: 26c01996e0fd81a4291f311eeaf28fd4, type: 3}
+      propertyPath: detectRadius
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 2629379781431461717, guid: 26c01996e0fd81a4291f311eeaf28fd4, type: 3}
+      propertyPath: maxHookDistance
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 3766470142030092167, guid: 26c01996e0fd81a4291f311eeaf28fd4, type: 3}
       propertyPath: m_Size.x
       value: 1.1115242
@@ -4123,6 +4135,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5476161497845117561, guid: 26c01996e0fd81a4291f311eeaf28fd4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9182311334515333225, guid: 26c01996e0fd81a4291f311eeaf28fd4, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: afa041dd90637d6439274c1ab30c6589, type: 2}
+    - target: {fileID: 9182311334515333225, guid: 26c01996e0fd81a4291f311eeaf28fd4, type: 3}
+      propertyPath: m_Parameters.widthCurve.m_Curve.Array.data[0].time
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -4201,11 +4221,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7353665936190704166, guid: 67bb44b543370e74a9058b2daeb353b1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.35
+      value: 2.1
       objectReference: {fileID: 0}
     - target: {fileID: 7353665936190704166, guid: 67bb44b543370e74a9058b2daeb353b1, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.21
+      value: 3.74
       objectReference: {fileID: 0}
     - target: {fileID: 7353665936190704166, guid: 67bb44b543370e74a9058b2daeb353b1, type: 3}
       propertyPath: m_LocalPosition.z
