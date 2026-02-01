@@ -29,11 +29,6 @@ namespace NPCSystem.Controller
         [Header("Movement Settings")]
         [SerializeField] private float walkSpeed = 2f;
 
-        [Header("Patrol Settings")]
-        [SerializeField] private Transform patrolPointAObj;
-        [SerializeField] private Transform patrolPointBObj;
-        [SerializeField] private float reachThreshold = 0.1f;
-
         public string NpcId => npcId;
         public bool CanBePossessed => canBePossessed;
         public NpcStateData State => domain != null
@@ -54,10 +49,7 @@ namespace NPCSystem.Controller
         {
             _registry[npcId] = this;
 
-            Vector2 startPoint = GetPatrolPointA();
-            transform.position = startPoint;
-
-            domain = CreateDomain(startPoint);
+            domain = CreateDomain(transform.position);
             domain.OnStateChanged += HandleStateChanged;
             MaskDomain.Instance.OnPossessionStarted += HandlePossessionStarted;
             MaskDomain.Instance.OnPossessionEnded += HandlePossessionEnded;
@@ -92,21 +84,8 @@ namespace NPCSystem.Controller
         protected virtual void UpdateMovement()
         {
             if (domain == null) return;
-            Vector2 pointA = GetPatrolPointA();
-            Vector2 pointB = GetPatrolPointB();
-
-            Vector2 newPosition = IdleAction(domain.GetState().Position, pointA, pointB, walkSpeed, Time.deltaTime, reachThreshold);
+            Vector2 newPosition = IdleAction(domain.GetState().Position, walkSpeed, Time.deltaTime);
             transform.position = newPosition;
-        }
-
-        private Vector2 GetPatrolPointA()
-        {
-            return patrolPointAObj != null ? (Vector2)patrolPointAObj.position : transform.position;
-        }
-
-        private Vector2 GetPatrolPointB()
-        {
-            return patrolPointBObj != null ? (Vector2)patrolPointBObj.position : transform.position;
         }
 
         public bool IsSeducible()
@@ -139,13 +118,10 @@ namespace NPCSystem.Controller
 
         protected virtual Vector2 IdleAction(
             Vector2 currentPosition,
-            Vector2 pointA,
-            Vector2 pointB,
             float speed,
-            float deltaTime,
-            float threshold)
+            float deltaTime)
         {
-            return domain.IdleAction(currentPosition, pointA, pointB, speed, deltaTime, threshold);
+            return currentPosition;
         }
 
         protected virtual Vector2 PossessedAction(Vector2 targetPosition)
@@ -241,11 +217,7 @@ namespace NPCSystem.Controller
             Gizmos.DrawWireSphere(transform.position, 0.5f);
 
             Gizmos.color = Color.cyan;
-            Vector2 pointA = GetPatrolPointA();
-            Vector2 pointB = GetPatrolPointB();
-            Gizmos.DrawSphere(pointA, 0.2f);
-            Gizmos.DrawSphere(pointB, 0.2f);
-            Gizmos.DrawLine(pointA, pointB);
+            Gizmos.DrawSphere(transform.position, 0.2f);
         }
 
         #endregion
