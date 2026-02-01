@@ -1,8 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
-using NPC.Domain;
+using NPCSystem.Domain;
+using MaskSystem.Domain;
+using NPCSystem.Abilities;
 
-namespace NPC.Controller
+namespace NPCSystem.Controller
 {
     public class NpcController : MonoBehaviour
     {
@@ -10,9 +12,6 @@ namespace NPC.Controller
 
         private static Dictionary<string, NpcController> _registry = new Dictionary<string, NpcController>();
 
-        /// <summary>
-        /// Find NpcController by ID
-        /// </summary>
         public static NpcController GetById(string npcId)
         {
             if (string.IsNullOrEmpty(npcId)) return null;
@@ -24,227 +23,221 @@ namespace NPC.Controller
 
         [Header("NPC Settings")]
         [SerializeField] private string npcId;
-        [SerializeField] private float seduceResistance = 0.2f;
         [SerializeField] private bool canBePossessed = true;
         [SerializeField] private float stunDuration = 2f;
-
-        [Header("Movement Settings")]
-        [SerializeField] private float walkSpeed = 2f;
-        [SerializeField] private Vector3 walkDirection = Vector3.right;
-
-        [Header("References")]
-        // TODO: Add reference to NpcView for visual effects
+        [SerializeField] private bool stunOnRelease = true;
 
         public string NpcId => npcId;
         public bool CanBePossessed => canBePossessed;
-        public float SeduceResistance => seduceResistance;
+        public NpcStateData State => domain != null
+            ? domain.GetState()
+            : new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed);
+
+        protected NpcDomain domain;
+        protected Rigidbody2D rb;
+        private Vector2 possessedTargetPosition;
+        private NpcAbility ability;
 
         private void Awake()
         {
-            // Generate ID if not set
             if (string.IsNullOrEmpty(npcId))
             {
                 npcId = $"npc_{GetInstanceID()}";
             }
+
+            rb = GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                Debug.LogWarning($"[{npcId}] Missing Rigidbody2D. Movement will use transform.");
+            }
+
+            ability = GetComponentInChildren<NpcAbility>(true);
         }
 
-        private void OnEnable()
+        protected virtual void OnEnable()
         {
-            // Register to static registry
             _registry[npcId] = this;
 
-            // Register to domain
-            NpcDomain.Instance.RegisterNpc(npcId, seduceResistance, canBePossessed);
-
-            // Subscribe to domain events
-            NpcDomain.Instance.OnStateChanged += HandleStateChanged;
+            domain = CreateDomain(transform.position);
+            domain.OnStateChanged += HandleStateChanged;
+            MaskDomain.Instance.OnPossessionStarted += HandlePossessionStarted;
+            MaskDomain.Instance.OnPossessionEnded += HandlePossessionEnded;
         }
 
-        private void OnDisable()
+        protected virtual void OnDisable()
         {
-            // Unsubscribe from events
-            NpcDomain.Instance.OnStateChanged -= HandleStateChanged;
+            if (domain != null)
+            {
+                domain.OnStateChanged -= HandleStateChanged;
+            }
+            MaskDomain.Instance.OnPossessionStarted -= HandlePossessionStarted;
+            MaskDomain.Instance.OnPossessionEnded -= HandlePossessionEnded;
 
-            // Unregister from domain
-            NpcDomain.Instance.UnregisterNpc(npcId);
-
-            // Unregister from static registry
             _registry.Remove(npcId);
         }
 
-        private void Update()
+        protected virtual void FixedUpdate()
         {
-            var state = NpcDomain.Instance.GetState(npcId);
-            if (!state.HasValue) return;
-
-            switch (state.Value.Phase)
+            if (domain == null) return;
+            var state = domain.GetState();
+            if (ShouldPatrol(state.Phase))
             {
-                case NpcPhase.Idle:
-                    // Walk in direction when idle
-                    UpdateMovement();
-                    break;
-
-                case NpcPhase.Stunned:
-                    // Update stun timer
-                    NpcDomain.Instance.UpdateStun(npcId, Time.deltaTime);
-                    break;
-
-                case NpcPhase.Lured:
-                case NpcPhase.Possessed:
-                    // No movement - controlled by mask or waiting
-                    break;
+                UpdateMovement();
+            }
+            else if (state.Phase == NpcPhase.Stunned)
+            {
+                domain.UpdateStun(Time.deltaTime);
             }
         }
 
-        private void UpdateMovement()
+        protected virtual void UpdateMovement()
         {
-            // Move in walk direction
-            transform.position += walkDirection.normalized * walkSpeed * Time.deltaTime;
-
-            // TODO: Add animation
-            // TODO: Add boundary check / patrol logic
+            if (domain == null) return;
+            Vector2 newPosition = IdleAction();
+            MoveTo(newPosition);
         }
 
-        /// <summary>
-        /// Check if this NPC can be seduced right now
-        /// </summary>
         public bool IsSeducible()
         {
-            var state = NpcDomain.Instance.GetState(npcId);
-            if (!state.HasValue) return false;
-
-            return state.Value.IsSeducible;
+            return domain != null && domain.GetState().IsSeducible;
         }
 
-        #region Public Methods - Called by MaskController
-
-        /// <summary>
-        /// Called when mask starts seducing this NPC
-        /// </summary>
-        public void OnLureStart()
+        protected virtual NpcDomain CreateDomain(Vector2 startPoint)
         {
-            if (!NpcDomain.Instance.StartLure(npcId))
-            {
-                Debug.Log($"[{npcId}] Cannot be lured.");
-                return;
-            }
-
-            // TODO: Stop current AI behavior
-            // TODO: Turn to face the mask
-            // TODO: Play lured animation
-
-            Debug.Log($"[{npcId}] Being lured by mask...");
+            return new NpcDomain(new NpcStateData(npcId, NpcPhase.Idle, 0f, canBePossessed, default, startPoint));
         }
 
-        /// <summary>
-        /// Called during lure process
-        /// </summary>
-        /// <param name="deltaProgress">Progress increment from mask</param>
-        /// <returns>True if fully lured</returns>
-        public bool OnLureProgress(float deltaProgress)
+        public virtual void HandlePossessedClick(GameObject target)
         {
-            bool fullyLured = NpcDomain.Instance.UpdateLureProgress(npcId, deltaProgress);
+            if (target == null) return;
+            if (domain == null) return;
 
-            if (fullyLured)
-            {
-                Debug.Log($"[{npcId}] Fully lured!");
-                // TODO: Play success effect
-            }
+            if (domain.GetState().Phase != NpcPhase.Possessed) return;
 
-            return fullyLured;
+            if (!IsValidPossessedTarget(target)) return;
+
+            possessedTargetPosition = target.transform.position;
+            Vector2 newPosition = PossessedAction();
+            MoveTo(newPosition);
         }
 
-        /// <summary>
-        /// Called when lure is cancelled
-        /// </summary>
-        public void OnLureCancelled()
+        protected virtual bool IsValidPossessedTarget(GameObject target)
         {
-            NpcDomain.Instance.CancelLure(npcId);
-
-            // TODO: Resume AI behavior
-            // TODO: Play confused animation
-
-            Debug.Log($"[{npcId}] Lure cancelled, resuming normal behavior.");
+            return true;
         }
 
-        /// <summary>
-        /// Called when mask attaches and takes control
-        /// </summary>
-        public void OnPossessed()
+        protected virtual Vector2 IdleAction()
         {
-            if (!NpcDomain.Instance.Possess(npcId))
-            {
-                Debug.Log($"[{npcId}] Failed to possess.");
-                return;
-            }
-
-            // TODO: Disable AI completely
-            // TODO: Enable player input for this NPC
-            // TODO: Play possession effect
-            // TODO: Change NPC appearance (glowing eyes, etc.)
-
-            Debug.Log($"[{npcId}] Now under mask control!");
+            return GetCurrentPosition();
         }
 
-        /// <summary>
-        /// Called when mask drops and releases control
-        /// </summary>
-        public void OnReleased()
+        protected virtual Vector2 PossessedAction()
         {
-            if (!NpcDomain.Instance.Release(npcId, stunDuration))
-            {
-                Debug.Log($"[{npcId}] Failed to release.");
-                return;
-            }
-
-            // TODO: Disable player input
-            // TODO: Play stun animation
-            // TODO: Restore normal appearance
-
-            Debug.Log($"[{npcId}] Released from possession, stunned for {stunDuration}s.");
+            return domain.PossessedAction(possessedTargetPosition);
         }
 
-        #endregion
+        protected virtual bool ShouldPatrol(NpcPhase phase)
+        {
+            return phase == NpcPhase.Idle;
+        }
 
         #region Event Handlers
 
         private void HandleStateChanged(object sender, NpcStateChangedEventArgs e)
         {
-            // Only handle events for this NPC
             if (e.NpcId != npcId) return;
 
             Debug.Log($"[{npcId}] State: {e.FromPhase} → {e.ToPhase}");
 
-            // Handle stun ended
             if (e.FromPhase == NpcPhase.Stunned && e.ToPhase == NpcPhase.Idle)
             {
-                OnStunEnded();
+                Debug.Log($"[{npcId}] Recovered from stun.");
             }
         }
 
-        private void OnStunEnded()
+        protected virtual void HandlePossessionStarted(object sender, string targetNpcId)
         {
-            // TODO: Resume AI behavior
-            // TODO: Play recovery animation
+            if (targetNpcId != npcId) return;
+            if (domain == null) return;
 
-            Debug.Log($"[{npcId}] Recovered from stun, resuming normal behavior.");
+            if (!domain.GetState().IsSeducible) return;
+            domain.Possess();
+            ability?.OnPossessedStart();
+            Debug.Log($"[{npcId}] Ability activated: {(ability != null ? ability.GetType().Name : "None")}");
+            Debug.Log($"[{npcId}] Possessed by mask.");
+        }
+
+        protected virtual void HandlePossessionEnded(object sender, string targetNpcId)
+        {
+            if (targetNpcId != npcId) return;
+            if (domain == null) return;
+
+            if (stunOnRelease)
+            {
+                domain.Release(stunDuration);
+                Debug.Log($"[{npcId}] Released, stunned for {stunDuration}s.");
+            }
+            else
+            {
+                domain.Release(0f);
+                Debug.Log($"[{npcId}] Released, no stun.");
+            }
+
+            ability?.OnPossessedEnd();
+            Debug.Log($"[{npcId}] Ability deactivated: {(ability != null ? ability.GetType().Name : "None")}");
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (domain == null) return;
+            if (domain.GetState().Phase != NpcPhase.Possessed) return;
+            ability?.OnTriggerEnter2D(other);
+        }
+
+        private void OnTriggerStay2D(Collider2D other)
+        {
+            if (domain == null) return;
+            if (domain.GetState().Phase != NpcPhase.Possessed) return;
+            ability?.OnTriggerStay2D(other);
         }
 
         #endregion
 
+        protected Vector2 GetCurrentPosition()
+        {
+            return rb != null ? rb.position : (Vector2)transform.position;
+        }
+
+        protected void MoveTo(Vector2 position)
+        {
+            if (rb != null)
+            {
+                if (rb.bodyType != RigidbodyType2D.Dynamic)
+                {
+                    rb.bodyType = RigidbodyType2D.Dynamic;
+                }
+                float dt = Time.fixedDeltaTime;
+                if (dt > 0f)
+                {
+                    Vector2 delta = position - rb.position;
+                    Vector2 velocity = delta / dt;
+                    rb.linearVelocity = velocity;
+                }
+            }
+            else
+            {
+                transform.position = position;
+            }
+        }
+
         #region Input Detection
 
-        /// <summary>
-        /// Called when player clicks/taps on this NPC
-        /// Requires Collider on this GameObject
-        /// </summary>
         private void OnMouseDown()
         {
-            // Find mask and try to seduce this NPC
-            var maskController = FindObjectOfType<Mask.Controller.MaskController>();
-            if (maskController != null)
+            var mask = FindObjectOfType<MaskSystem.Mask>();
+            if (mask != null)
             {
-                maskController.StartSeduce(this);
+                mask.TryPossessNpc(GetComponent<NPCSystem.NPC>());
             }
         }
 
@@ -252,20 +245,14 @@ namespace NPC.Controller
 
         #region Editor
 
-        private void OnDrawGizmosSelected()
+        protected virtual void OnDrawGizmosSelected()
         {
-            // Visualize NPC state in editor
-            var state = Application.isPlaying ? NpcDomain.Instance.GetState(npcId) : null;
-
-            if (state.HasValue)
+            if (Application.isPlaying && domain != null)
             {
-                switch (state.Value.Phase)
+                switch (domain.GetState().Phase)
                 {
                     case NpcPhase.Idle:
                         Gizmos.color = Color.green;
-                        break;
-                    case NpcPhase.Lured:
-                        Gizmos.color = Color.yellow;
                         break;
                     case NpcPhase.Possessed:
                         Gizmos.color = Color.red;
@@ -281,6 +268,9 @@ namespace NPC.Controller
             }
 
             Gizmos.DrawWireSphere(transform.position, 0.5f);
+
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawSphere(transform.position, 0.2f);
         }
 
         #endregion

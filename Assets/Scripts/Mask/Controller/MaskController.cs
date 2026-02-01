@@ -1,242 +1,197 @@
 using UnityEngine;
-using Mask.Domain;
-using NPC.Controller;
+using MaskSystem.Domain;
+using NPCSystem.Controller;
 
-namespace Mask.Controller
+namespace MaskSystem.Controller
 {
     public class MaskController : MonoBehaviour
     {
-        [Header("Seduce Settings")]
-        [SerializeField] private float lureDistance = 5f;
-        [SerializeField] private float seduceSpeed = 2f;
-        [SerializeField] private float lureProgressPerSecond = 0.5f;
-        [SerializeField] private float attachDistance = 0.5f;
-
         [Header("Attach Settings")]
         [SerializeField] private Vector3 attachOffset = new Vector3(0, 1.5f, 0.3f);
 
-        public float LureDistance => lureDistance;
+        [Header("Release Settings")]
+        [SerializeField] private float releaseUpwardForce = 5f;
+
+        private Vector3 spawnPosition;
+        private Quaternion spawnRotation;
+        private Transform originalParent;
+        private RigidbodyType2D originalBodyType;
+        private Vector3 lastParentPosition;
+        private Rigidbody2D rb;
+        private Collider2D maskCollider;
+        private Renderer[] maskRenderers;
 
         #region Unity Lifecycle
 
+        private void Awake()
+        {
+            originalParent = transform.parent;
+            spawnPosition = transform.position;
+            spawnRotation = transform.rotation;
+
+            rb = GetComponent<Rigidbody2D>();
+            maskCollider = GetComponent<Collider2D>();
+            maskRenderers = GetComponentsInChildren<Renderer>(true);
+            if (rb != null)
+            {
+                originalBodyType = rb.bodyType;
+            }
+        }
+
         private void Update()
         {
-            // Read state from domain
-            MaskPhase currentPhase = MaskDomain.Instance.CurrentState.Phase;
-
-            switch (currentPhase)
+            if (MaskDomain.Instance.IsPossessing)
             {
-                case MaskPhase.Idle:
-                    break;
+                FollowPossessedTarget();
+            }
+        }
 
-                case MaskPhase.Seducing:
-                    UpdateSeducing();
-                    break;
-
-                case MaskPhase.Attaching:
-                    break;
-
-                case MaskPhase.Possessed:
-                    UpdatePossessed();
-                    break;
-
-                case MaskPhase.Dropping:
-                    break;
+        private void LateUpdate()
+        {
+            if (MaskDomain.Instance.IsPossessing)
+            {
+                lastParentPosition = transform.parent != null ? transform.parent.position : lastParentPosition;
             }
         }
 
         #endregion
 
-        #region State Update Methods
-
-        private void UpdateSeducing()
+        private void FollowPossessedTarget()
         {
-            // Read target ID from domain
-            string targetId = MaskDomain.Instance.CurrentState.TargetNpcId;
+            string targetId = MaskDomain.Instance.CurrentTargetId;
             if (string.IsNullOrEmpty(targetId))
             {
-                CancelSeduce();
                 return;
             }
 
-            // Lookup NPC by ID
             NpcController targetNpc = NpcController.GetById(targetId);
             if (targetNpc == null)
             {
-                CancelSeduce();
                 return;
             }
 
-            // Move toward NPC
-            transform.position = Vector3.MoveTowards(
-                transform.position,
-                targetNpc.transform.position,
-                seduceSpeed * Time.deltaTime
-            );
-
-            // Update lure progress
-            bool fullyLured = targetNpc.OnLureProgress(lureProgressPerSecond * Time.deltaTime);
-
-            // Check if close enough and fully lured
-            float distance = Vector3.Distance(transform.position, targetNpc.transform.position);
-            if (distance <= attachDistance && fullyLured)
+            if (transform.parent != targetNpc.transform)
             {
-                AttachToNpc(targetNpc);
+                transform.SetParent(targetNpc.transform);
+                lastParentPosition = targetNpc.transform.position;
             }
-        }
 
-        private void UpdatePossessed()
-        {
-            // Update possession duration
-            MaskDomain.Instance.UpdatePossessionTime(Time.deltaTime);
+            transform.localPosition = attachOffset;
         }
-
-        #endregion
 
         #region Public Methods
 
-        /// <summary>
-        /// Start seducing a specific NPC
-        /// </summary>
-        public bool StartSeduce(NpcController npcController)
+        public void ResetToSpawn()
         {
-            // Validate mask is idle
+            MaskDomain.Instance.ForceReset();
+
+            transform.SetParent(originalParent);
+            transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+
+            Rigidbody2D rb = GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.bodyType = originalBodyType;
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+            }
+        }
+
+        /// <summary>
+        /// Possess an NPC immediately
+        /// </summary>
+        public bool Possess(NpcController npcController)
+        {
+            if (npcController == null)
+            {
+                Debug.Log("No NPC to possess.");
+                return false;
+            }
+
             if (!MaskDomain.Instance.IsIdle)
             {
-                Debug.Log("Mask is busy.");
+                Debug.Log($"Mask is already possessing: {MaskDomain.Instance.CurrentTargetId}");
                 return false;
             }
 
-            // Validate NPC is seducible
-            if (!npcController.IsSeducible())
+            if (!MaskDomain.Instance.Possess(npcController.NpcId))
             {
-                Debug.Log($"NPC {npcController.NpcId} is not seducible.");
+                Debug.Log("Domain rejected possession.");
                 return false;
             }
 
-            // Update domain (stores TargetNpcId)
-            if (!MaskDomain.Instance.StartSeduce(npcController.NpcId))
+            // Attach to NPC
+            transform.SetParent(npcController.transform);
+            transform.localPosition = attachOffset;
+            lastParentPosition = npcController.transform.position;
+
+            // Disable physics
+            if (rb != null)
             {
-                Debug.Log("Domain rejected seduce.");
-                return false;
+                rb.bodyType = RigidbodyType2D.Kinematic;
+            }
+            if (maskCollider != null) maskCollider.enabled = false;
+            if (maskRenderers != null)
+            {
+                for (int i = 0; i < maskRenderers.Length; i++)
+                {
+                    if (maskRenderers[i] != null)
+                    {
+                        maskRenderers[i].enabled = false;
+                    }
+                }
             }
 
-            // Notify NPC
-            npcController.OnLureStart();
-
-            Debug.Log($"Mask seducing NPC: {npcController.NpcId}");
+            Debug.Log($"Mask possessed NPC: {npcController.NpcId}");
             return true;
         }
 
         /// <summary>
-        /// Cancel current seduction
+        /// Release current NPC
         /// </summary>
-        public void CancelSeduce()
-        {
-            if (MaskDomain.Instance.CurrentState.Phase != MaskPhase.Seducing)
-            {
-                return;
-            }
-
-            // Notify NPC
-            string targetId = MaskDomain.Instance.CurrentState.TargetNpcId;
-            NpcController targetNpc = NpcController.GetById(targetId);
-            if (targetNpc != null)
-            {
-                targetNpc.OnLureCancelled();
-            }
-
-            // Update domain
-            MaskDomain.Instance.CancelSeduce();
-
-            Debug.Log("Seduce cancelled.");
-        }
-
-        /// <summary>
-        /// Drop mask from current NPC
-        /// </summary>
-        public void Drop()
+        public void Release()
         {
             if (!MaskDomain.Instance.IsPossessing)
             {
-                Debug.Log("Mask is not possessing.");
+                Debug.Log("Mask is not possessing anyone.");
                 return;
             }
 
-            // Get current target before dropping
-            string targetId = MaskDomain.Instance.CurrentState.TargetNpcId;
-            NpcController targetNpc = NpcController.GetById(targetId);
+            string targetId = MaskDomain.Instance.CurrentTargetId;
+            Rigidbody2D parentRb = transform.parent != null ? transform.parent.GetComponent<Rigidbody2D>() : null;
+            Vector2 inheritedVelocity = parentRb != null ? parentRb.linearVelocity : Vector2.zero;
+            Vector2 selfVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
+            Debug.Log($"[MaskController] Release parent velocity: {inheritedVelocity}");
+            Debug.Log($"[MaskController] Release self velocity: {selfVelocity}");
 
-            // Update domain
-            MaskDomain.Instance.StartDrop();
-
-            // Notify NPC
-            if (targetNpc != null)
+            if (!MaskDomain.Instance.Release())
             {
-                targetNpc.OnReleased();
+                Debug.Log("Domain rejected release.");
+                return;
             }
 
-            // Detach
+            // Detach from NPC
             transform.SetParent(null);
 
-            // Enable physics
-            Rigidbody rb = GetComponent<Rigidbody>();
+            // Enable physics and preserve current velocity, then add upward velocity
             if (rb != null)
             {
-                rb.isKinematic = false;
-                rb.useGravity = true;
+                rb.bodyType = RigidbodyType2D.Dynamic;
+                rb.linearVelocity = inheritedVelocity + Vector2.up * releaseUpwardForce;
             }
-
-            // Complete drop
-            MaskDomain.Instance.CompleteDrop();
-
-            Debug.Log($"Mask dropped from NPC: {targetId}");
-        }
-
-        #endregion
-
-        #region Private Methods
-
-        private void AttachToNpc(NpcController targetNpc)
-        {
-            // Update domain
-            MaskDomain.Instance.BeginAttach();
-            MaskDomain.Instance.CompletePossession();
-
-            // Notify NPC
-            targetNpc.OnPossessed();
-
-            // Parent to NPC
-            transform.SetParent(targetNpc.transform);
-            transform.localPosition = attachOffset;
-
-            // Disable physics
-            Rigidbody rb = GetComponent<Rigidbody>();
-            if (rb != null)
+            if (maskCollider != null) maskCollider.enabled = true;
+            if (maskRenderers != null)
             {
-                rb.isKinematic = true;
-                rb.useGravity = false;
-            }
-
-            Debug.Log($"Mask attached to NPC: {targetNpc.NpcId}");
-        }
-
-        #endregion
-
-        #region Editor
-
-        private void OnDrawGizmosSelected()
-        {
-            string targetId = MaskDomain.Instance?.CurrentState.TargetNpcId;
-            if (!string.IsNullOrEmpty(targetId))
-            {
-                NpcController targetNpc = NpcController.GetById(targetId);
-                if (targetNpc != null)
+                for (int i = 0; i < maskRenderers.Length; i++)
                 {
-                    Gizmos.color = Color.red;
-                    Gizmos.DrawLine(transform.position, targetNpc.transform.position);
+                    if (maskRenderers[i] != null)
+                    {
+                        maskRenderers[i].enabled = true;
+                    }
                 }
             }
+
+            Debug.Log($"Mask released NPC: {targetId}");
         }
 
         #endregion

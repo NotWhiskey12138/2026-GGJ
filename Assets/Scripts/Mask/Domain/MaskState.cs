@@ -1,79 +1,55 @@
 using System;
 
-namespace Mask.Domain
+namespace MaskSystem.Domain
 {
     /// <summary>
-    /// Represents the current phase of the mask lifecycle
+    /// Simplified mask phases - only 2 states needed
     /// </summary>
     public enum MaskPhase
     {
-        Idle,       // On ground, waiting to be activated
-        Seducing,   // Actively luring an NPC
-        Attaching,  // In process of attaching to NPC face
-        Possessed,  // Controlling an NPC
-        Dropping    // Falling off NPC, transitioning back to Idle
+        Idle,       // Free, can possess a new NPC
+        Possessed   // Attached to and controlling an NPC
     }
 
     /// <summary>
-    /// Immutable state snapshot of the mask at any given moment
+    /// Immutable state snapshot of the mask
     /// </summary>
     public struct MaskStateData
     {
         public MaskPhase Phase { get; }
         public string TargetNpcId { get; }
         public float PossessionDuration { get; }
-        public float SeducePower { get; }
-        public float ControlStrength { get; }
 
-        public MaskStateData(
-            MaskPhase phase,
-            string targetNpcId = null,
-            float possessionDuration = 0f,
-            float seducePower = 1f,
-            float controlStrength = 1f)
+        public MaskStateData(MaskPhase phase, string targetNpcId = null, float possessionDuration = 0f)
         {
             Phase = phase;
             TargetNpcId = targetNpcId;
             PossessionDuration = possessionDuration;
-            SeducePower = seducePower;
-            ControlStrength = controlStrength;
         }
 
-        /// <summary>
-        /// Creates a new state with updated phase
-        /// </summary>
         public MaskStateData WithPhase(MaskPhase newPhase)
         {
-            return new MaskStateData(newPhase, TargetNpcId, PossessionDuration, SeducePower, ControlStrength);
+            return new MaskStateData(newPhase, TargetNpcId, PossessionDuration);
         }
 
-        /// <summary>
-        /// Creates a new state with updated target
-        /// </summary>
         public MaskStateData WithTarget(string npcId)
         {
-            return new MaskStateData(Phase, npcId, PossessionDuration, SeducePower, ControlStrength);
+            return new MaskStateData(Phase, npcId, PossessionDuration);
         }
 
-        /// <summary>
-        /// Creates a new state with updated possession duration
-        /// </summary>
-        public MaskStateData WithDuration(float duration)
-        {
-            return new MaskStateData(Phase, TargetNpcId, duration, SeducePower, ControlStrength);
-        }
-
-        /// <summary>
-        /// Clears target and resets to idle state
-        /// </summary>
         public MaskStateData Reset()
         {
-            return new MaskStateData(MaskPhase.Idle, null, 0f, SeducePower, ControlStrength);
+            return new MaskStateData(MaskPhase.Idle, null, 0f);
+        }
+
+        public MaskStateData WithDuration(float newDuration)
+        {
+            return new MaskStateData(Phase, TargetNpcId, newDuration);
         }
 
         public override string ToString()
         {
-            return $"[MaskState] Phase: {Phase}, Target: {TargetNpcId ?? "None"}, Duration: {PossessionDuration:F2}s";
+            return $"[MaskState] Phase: {Phase}, Target: {TargetNpcId ?? "None"}, Duration: {PossessionDuration:0.00}s";
         }
     }
 

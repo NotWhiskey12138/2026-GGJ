@@ -1,5 +1,8 @@
 using UnityEngine;
-
+using MaskSystem;
+using MaskSystem.Domain;
+using NPCSystem;
+using NPCSystem.Controller;
 namespace Game.Controller
 {
     /// <summary>
@@ -9,11 +12,9 @@ namespace Game.Controller
     public class GameInputHandler : MonoBehaviour
     {
         [Header("References")]
-        [SerializeField] private Mask.Mask mask;
+        [SerializeField] private Mask mask;
         [SerializeField] private Camera mainCamera;
 
-        [Header("Input Settings")]
-        [SerializeField] private LayerMask npcLayer;
 
         private void Awake()
         {
@@ -21,6 +22,7 @@ namespace Game.Controller
             {
                 mainCamera = Camera.main;
             }
+
         }
 
         private void Update()
@@ -40,6 +42,16 @@ namespace Game.Controller
                     HandleTap(touch.position);
                 }
             }
+
+            // Handle space key to release possession
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                if (mask != null && mask.IsPossessing)
+                {
+                    mask.Release();
+                    Debug.Log("Released possession with Space key.");
+                }
+            }
         }
 
         private void HandleTap(Vector2 screenPosition)
@@ -56,39 +68,59 @@ namespace Game.Controller
                 return;
             }
 
-            // Raycast from camera through tap position
-            Ray ray = mainCamera.ScreenPointToRay(screenPosition);
-            RaycastHit hit;
+            // Convert screen position to world position for 2D
+            Vector2 worldPosition = mainCamera.ScreenToWorldPoint(screenPosition);
+            Debug.Log($"Tap world position: {worldPosition}");
 
-            if (Physics.Raycast(ray, out hit, Mathf.Infinity, npcLayer))
+            // 2D check at tap position
+            Collider2D hit = Physics2D.OverlapPoint(worldPosition);
+
+            if (hit != null)
             {
-                // Check if hit object has NPC
-                NPC.NPC npc = hit.collider.GetComponent<NPC.NPC>();
+                Debug.Log($"Tap hit: {hit.name}");
+                if (mask != null && mask.IsPossessing)
+                {
+                    string targetNpcId = MaskDomain.Instance.CurrentTargetId;
+                    NpcController controller = NpcController.GetById(targetNpcId);
+                    if (controller != null)
+                    {
+                        Debug.Log($"Forwarding tap to possessed NPC: {targetNpcId}");
+                        controller.HandlePossessedClick(hit.gameObject);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("No possessed NPC controller found.");
+                    }
+                    return;
+                }
 
+                // Check if hit object has NPC
+                NPC npc = hit.GetComponent<NPC>();
                 if (npc != null)
                 {
-                    TryTargetNpc(npc);
+                    Debug.Log($"Tap gets npc {npc.NpcId}");
+                    AttachMasktoNPC(npc);
                 }
+                else
+                {
+                    Debug.Log("Tap hit has no NPC component.");
+                }
+            }
+            else
+            {
+                Debug.Log("No hit");
             }
         }
 
-        private void TryTargetNpc(NPC.NPC npc)
+        private void AttachMasktoNPC(NPC npc)
         {
-            // Check distance between Mask and NPC
-            float distance = Vector3.Distance(mask.transform.position, npc.transform.position);
-            if (distance > mask.LureDistance)
-            {
-                Debug.Log($"NPC {npc.NpcId} is too far. Distance: {distance}, LureDistance: {mask.LureDistance}");
-                return;
-            }
-
-            // Start seduce
-            bool success = mask.StartSeduce(npc);
+            bool success = mask.TryPossessNpc(npc);
 
             if (success)
             {
-                Debug.Log($"Successfully started seducing NPC: {npc.NpcId}");
+                Debug.Log($"Successfully possessed NPC: {npc.NpcId}");
             }
         }
+
     }
 }

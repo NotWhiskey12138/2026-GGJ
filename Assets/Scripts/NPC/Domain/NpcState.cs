@@ -1,98 +1,103 @@
 using System;
+using UnityEngine;
 
-namespace NPC.Domain
+namespace NPCSystem.Domain
 {
     /// <summary>
-    /// Represents the current behavior phase of an NPC
+    /// Simplified NPC phases - only 3 states needed
     /// </summary>
     public enum NpcPhase
     {
-        Idle,       // Default state, running normal AI behavior
-        Lured,      // Being seduced by mask, moving toward it
-        Possessed,  // Under mask control, player controls this NPC
-        Stunned     // Just released from possession, temporarily disabled
+        Idle,       // Default state, patrolling
+        Possessed,  // Under mask control
+        Stunned     // Just released, temporarily disabled
     }
 
     /// <summary>
-    /// Immutable state snapshot of an NPC at any given moment
+    /// Patrol data for NPC movement
+    /// </summary>
+    public struct PatrolData
+    {
+        public float PointAX { get; }
+        public float PointAY { get; }
+        public float PointBX { get; }
+        public float PointBY { get; }
+        public bool MovingToB { get; }
+
+        public PatrolData(float pointAX, float pointAY, float pointBX, float pointBY, bool movingToB = true)
+        {
+            PointAX = pointAX;
+            PointAY = pointAY;
+            PointBX = pointBX;
+            PointBY = pointBY;
+            MovingToB = movingToB;
+        }
+
+        public PatrolData WithMovingToB(bool movingToB)
+        {
+            return new PatrolData(PointAX, PointAY, PointBX, PointBY, movingToB);
+        }
+    }
+
+    /// <summary>
+    /// Immutable state snapshot of an NPC
     /// </summary>
     public struct NpcStateData
     {
         public string NpcId { get; }
         public NpcPhase Phase { get; }
-        public float SeduceResistance { get; }      // 0-1, higher = harder to seduce
-        public float LuredProgress { get; }         // 0-1, when reaches 1 = fully lured
-        public float StunRemaining { get; }         // Remaining stun time after release
-        public bool CanBePossessed { get; }         // Some NPCs are immune
+        public float StunRemaining { get; }
+        public bool CanBePossessed { get; }
+        public PatrolData Patrol { get; }
+        public Vector2 Position { get; }
 
         public NpcStateData(
             string npcId,
             NpcPhase phase = NpcPhase.Idle,
-            float seduceResistance = 0.2f,
-            float luredProgress = 0f,
             float stunRemaining = 0f,
-            bool canBePossessed = true)
+            bool canBePossessed = true,
+            PatrolData patrol = default,
+            Vector2 position = default)
         {
             NpcId = npcId;
             Phase = phase;
-            SeduceResistance = seduceResistance;
-            LuredProgress = luredProgress;
             StunRemaining = stunRemaining;
             CanBePossessed = canBePossessed;
+            Patrol = patrol;
+            Position = position;
         }
-
-        #region Builder Methods
 
         public NpcStateData WithPhase(NpcPhase newPhase)
         {
-            return new NpcStateData(NpcId, newPhase, SeduceResistance, LuredProgress, StunRemaining, CanBePossessed);
-        }
-
-        public NpcStateData WithLuredProgress(float progress)
-        {
-            float clamped = Math.Max(0f, Math.Min(1f, progress));
-            return new NpcStateData(NpcId, Phase, SeduceResistance, clamped, StunRemaining, CanBePossessed);
+            return new NpcStateData(NpcId, newPhase, StunRemaining, CanBePossessed, Patrol, Position);
         }
 
         public NpcStateData WithStunRemaining(float duration)
         {
-            return new NpcStateData(NpcId, Phase, SeduceResistance, LuredProgress, duration, CanBePossessed);
+            return new NpcStateData(NpcId, Phase, duration, CanBePossessed, Patrol, Position);
         }
 
-        public NpcStateData ResetLuredProgress()
+        public NpcStateData WithPatrolDirection(bool movingToB)
         {
-            return new NpcStateData(NpcId, Phase, SeduceResistance, 0f, StunRemaining, CanBePossessed);
+            return new NpcStateData(NpcId, Phase, StunRemaining, CanBePossessed, Patrol.WithMovingToB(movingToB), Position);
         }
 
         public NpcStateData Reset()
         {
-            return new NpcStateData(NpcId, NpcPhase.Idle, SeduceResistance, 0f, 0f, CanBePossessed);
+            return new NpcStateData(NpcId, NpcPhase.Idle, 0f, CanBePossessed, Patrol, Position);
         }
 
-        #endregion
+        public NpcStateData WithPosition(Vector2 position)
+        {
+            return new NpcStateData(NpcId, Phase, StunRemaining, CanBePossessed, Patrol, position);
+        }
 
-        #region Helper Properties
-
-        /// <summary>
-        /// Check if NPC is available for seduction
-        /// </summary>
         public bool IsSeducible => CanBePossessed && Phase == NpcPhase.Idle;
-
-        /// <summary>
-        /// Check if NPC is currently under mask control
-        /// </summary>
         public bool IsUnderControl => Phase == NpcPhase.Possessed;
-
-        /// <summary>
-        /// Check if lure is complete
-        /// </summary>
-        public bool IsFullyLured => LuredProgress >= 1f;
-
-        #endregion
 
         public override string ToString()
         {
-            return $"[NPC:{NpcId}] Phase: {Phase}, LuredProgress: {LuredProgress:P0}";
+            return $"[NPC:{NpcId}] Phase: {Phase}";
         }
     }
 

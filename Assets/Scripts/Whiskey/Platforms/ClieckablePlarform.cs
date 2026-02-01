@@ -57,6 +57,7 @@ public class ClickablePlatform : MonoBehaviour
 
         Vector3 spawnPos = transform.position + Vector3.down * 1f;
         GameObject b = Instantiate(bee, spawnPos, Quaternion.identity);
+        b.tag = "FrogTarget";
 
 // 从更下面弹到 spawnPos
         b.transform.DOMoveY(spawnPos.y, 0.3f)
