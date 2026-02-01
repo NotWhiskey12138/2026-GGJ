@@ -135,9 +135,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraTransform: {fileID: 0}
-  parallax: 0.22
-  affectX: 1
-  affectY: 0
+  parallaxX: 0.22
+  parallaxY: 0.2
   smoothing: 0
 --- !u!114 &1161097194497720732
 MonoBehaviour:
@@ -500,9 +499,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraTransform: {fileID: 0}
-  parallax: 0.55
-  affectX: 1
-  affectY: 0
+  parallaxX: 0.55
+  parallaxY: 0.4
   smoothing: 0
 --- !u!114 &2094834567723079282
 MonoBehaviour:
@@ -654,9 +652,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraTransform: {fileID: 0}
-  parallax: 0.75
-  affectX: 1
-  affectY: 1
+  parallaxX: 0.75
+  parallaxY: 0.5
   smoothing: 0
 --- !u!114 &3342598025839091534
 MonoBehaviour:
@@ -721,9 +718,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraTransform: {fileID: 0}
-  parallax: 0.05
-  affectX: 1
-  affectY: 0
+  parallaxX: 0.05
+  parallaxY: 0.05
   smoothing: 0
 --- !u!114 &4698407245446510297
 MonoBehaviour:
@@ -1310,9 +1306,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraTransform: {fileID: 0}
-  parallax: 0.35
-  affectX: 1
-  affectY: 0
+  parallaxX: 0.35
+  parallaxY: 0.3
   smoothing: 0
 --- !u!114 &8711905872996287832
 MonoBehaviour:
@@ -1464,9 +1459,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraTransform: {fileID: 0}
-  parallax: 0.12
-  affectX: 1
-  affectY: 0
+  parallaxX: 0.12
+  parallaxY: 0.1
   smoothing: 0
 --- !u!114 &4109453340671022691
 MonoBehaviour:

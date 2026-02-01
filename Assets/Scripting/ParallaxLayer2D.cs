@@ -2,10 +2,14 @@ using UnityEngine;
 
 /// <summary>
 /// Simple 2D parallax for SpriteRenderer layers.
-/// Parameter "parallax" is intuitive:
-///  - 0   = very far (almost stuck to camera, moves slow on screen)
-///  - 1   = very near (almost world-locked, moves fast on screen)
-/// Works best when the camera follows the player.
+/// Intuitive parameters:
+///  - parallaxX / parallaxY:
+///     0 = very far (follows camera a lot => moves slow on screen)
+///     1 = very near (world-locked more => moves fast on screen)
+///
+/// Tip for tall levels:
+///  - Set parallaxY = 0 on ALL layers => background follows camera vertically,
+///    so it won't "run out of height" and expose top/bottom edges.
 /// </summary>
 [ExecuteAlways]
 public class ParallaxLayer2D : MonoBehaviour
@@ -14,11 +18,8 @@ public class ParallaxLayer2D : MonoBehaviour
     public Transform cameraTransform;
 
     [Header("Parallax Amount (0 = far, 1 = near)")]
-    [Range(0f, 1f)] public float parallax = 0.3f;
-
-    [Header("Axis")]
-    public bool affectX = true;
-    public bool affectY = false;
+    [Range(0f, 1f)] public float parallaxX = 0.3f;
+    [Range(0f, 1f)] public float parallaxY = 0.0f; // default 0 for tall levels
 
     [Header("Optional smoothing")]
     [Tooltip("0 = no smoothing; higher = smoother but laggier")]
@@ -43,14 +44,15 @@ public class ParallaxLayer2D : MonoBehaviour
     {
         if (cameraTransform == null) return;
 
-        // "follow" is how much the layer follows the camera in world space.
+        // follow is how much the layer follows the camera in world space.
         // far (parallax small) => follow close to 1 => screen movement small
-        float follow = 1f - parallax;
+        float followX = 1f - parallaxX;
+        float followY = 1f - parallaxY;
 
         Vector3 camDelta = cameraTransform.position - _camStartPos;
 
-        float dx = affectX ? camDelta.x * follow : 0f;
-        float dy = affectY ? camDelta.y * follow : 0f;
+        float dx = camDelta.x * followX;
+        float dy = camDelta.y * followY;
 
         Vector3 target = new Vector3(_startPos.x + dx, _startPos.y + dy, _startPos.z);
 
