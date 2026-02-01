@@ -10,11 +10,22 @@ namespace NPCSystem.Frog
         [Header("Idle Patrol")]
         [SerializeField] private float idleSpeed = 1.0f;
         [SerializeField] private Vector2 idleDirection = Vector2.right;
+        [SerializeField] private bool requireGroundedForPatrol = true;
+        [SerializeField] private Transform groundCheck;
+        [SerializeField] private float groundCheckRadius = 0.12f;
+        [SerializeField] private LayerMask groundLayer;
+        [SerializeField] private bool debugGrounded = false;
+        [SerializeField] private bool disableEdgeDetectorInAir = true;
 
         private FrogDomain frogDomain;
+        private FrogAbility frogAbility;
+        private EnvironmentSystem.EdgeDetector[] edgeDetectors;
+        private bool edgeDetectorsInitialized;
 
         protected override void OnEnable()
         {
+            frogAbility = GetComponentInChildren<FrogAbility>(true);
+            CacheEdgeDetectors();
             base.OnEnable();
         }
 
@@ -28,15 +39,28 @@ namespace NPCSystem.Frog
 
         protected override Vector2 IdleAction()
         {
+            bool grounded = !requireGroundedForPatrol || IsGrounded();
             return frogDomain != null
-                ? frogDomain.IdleStep(GetCurrentPosition(), Time.fixedDeltaTime)
+                ? frogDomain.IdleStep(GetCurrentPosition(), Time.fixedDeltaTime, grounded)
                 : GetCurrentPosition();
         }
 
         protected override void UpdateMovement()
         {
+            bool grounded = !requireGroundedForPatrol || IsGrounded();
+            UpdateEdgeDetectors(grounded);
+            if (requireGroundedForPatrol && !grounded)
+            {
+                return;
+            }
+
             // Move in idle via domain-driven step.
             base.UpdateMovement();
+        }
+
+        protected override bool ShouldPatrol(NpcPhase phase)
+        {
+            return phase == NpcPhase.Idle || phase == NpcPhase.Possessed;
         }
 
         public override void HandlePossessedClick(GameObject target)
@@ -55,6 +79,42 @@ namespace NPCSystem.Frog
 
             frogDomain.FlipIdleDirection();
             Debug.Log($"[{NpcId}] FlipIdleDirection -> {frogDomain.IdleDirection}");
+        }
+
+        private bool IsGrounded()
+        {
+            if (groundCheck == null) return false;
+            bool grounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer) != null;
+            if (debugGrounded)
+            {
+                Debug.Log($"[{NpcId}] IsGrounded={grounded} pos={groundCheck.position} radius={groundCheckRadius} layerMask={groundLayer.value}");
+            }
+            return grounded;
+        }
+
+        private void CacheEdgeDetectors()
+        {
+            edgeDetectors = GetComponentsInChildren<EnvironmentSystem.EdgeDetector>(true);
+            edgeDetectorsInitialized = true;
+        }
+
+        private void UpdateEdgeDetectors(bool grounded)
+        {
+            if (!disableEdgeDetectorInAir) return;
+            if (!edgeDetectorsInitialized)
+            {
+                CacheEdgeDetectors();
+            }
+            if (edgeDetectors == null) return;
+
+            bool enable = grounded;
+            for (int i = 0; i < edgeDetectors.Length; i++)
+            {
+                if (edgeDetectors[i] != null)
+                {
+                    edgeDetectors[i].enabled = enable;
+                }
+            }
         }
     }
 }

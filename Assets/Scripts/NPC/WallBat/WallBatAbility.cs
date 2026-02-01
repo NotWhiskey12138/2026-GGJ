@@ -2,12 +2,13 @@ using UnityEngine;
 using DG.Tweening;
 using NPCSystem.Abilities;
 
-namespace NPCSystem.Bat
+namespace NPCSystem.WallBat
 {
-    public class BatAbility : NpcAbility
+    public class WallBatAbility : NpcAbility
     {
         [Header("Detect")]
-        [SerializeField] private string targetTag = "BatTarget";
+        [SerializeField] private string targetTag = "WallBatFood";
+        [SerializeField] private LayerMask targetLayer;
         [SerializeField] private float detectRadius = 4f;
         [SerializeField] private float maxHookDistance = 6f;
 
@@ -16,21 +17,22 @@ namespace NPCSystem.Bat
         [SerializeField] private float reachThreshold = 0.1f;
 
         private Tween moveTween;
-        private Transform currentTarget;
-        private Collider2D currentTargetCollider;
+        private Collider2D currentTarget;
+        private WallBatController wallBatController;
 
-        public bool IsActing { get; private set; }
-        public bool IsLatched { get; private set; }
+        protected override void Awake()
+        {
+            base.Awake();
+            wallBatController = GetComponentInParent<WallBatController>();
+        }
 
         private void Update()
         {
             if (!isActive) return;
-            if (IsLatched) return;
             if (moveTween != null && moveTween.IsActive()) return;
 
             Vector2 origin = transform.position;
-            int platformLayer = LayerMask.GetMask("Platform");
-            Collider2D[] hits = Physics2D.OverlapCircleAll(origin, detectRadius, platformLayer);
+            Collider2D[] hits = Physics2D.OverlapCircleAll(origin, detectRadius, targetLayer);
             if (hits == null || hits.Length == 0) return;
 
             Collider2D bestCol = null;
@@ -55,33 +57,32 @@ namespace NPCSystem.Bat
 
             if (bestCol == null) return;
 
-            currentTarget = bestCol.transform;
-            currentTargetCollider = bestCol;
+            currentTarget = bestCol;
             Vector2 targetPoint = bestCol.ClosestPoint(origin);
 
+            wallBatController?.SetPatrolSuspended(true);
+
             moveTween?.Kill();
-            IsActing = true;
             moveTween = transform.DOMove(targetPoint, moveDuration)
                 .SetEase(Ease.OutSine)
                 .OnComplete(() =>
                 {
-                    if (currentTargetCollider != null)
+                    if (currentTarget != null)
                     {
                         float dist = Vector2.Distance(transform.position, targetPoint);
                         if (dist <= reachThreshold)
                         {
-                            IsLatched = true;
-                            transform.position = targetPoint;
-                            var rb = GetComponentInParent<Rigidbody2D>();
-                            if (rb != null)
+                            var food = currentTarget.GetComponent<WallBatFood>();
+                            if (food != null && wallBatController != null)
                             {
-                                rb.linearVelocity = Vector2.zero;
+                                wallBatController.SetGravityDirection(food.GravityDirection);
                             }
+                            Destroy(currentTarget.gameObject);
                         }
                     }
-                    IsActing = false;
+
                     currentTarget = null;
-                    currentTargetCollider = null;
+                    wallBatController?.SetPatrolSuspended(false);
                 });
         }
 
@@ -89,9 +90,7 @@ namespace NPCSystem.Bat
         {
             moveTween?.Kill();
             currentTarget = null;
-            currentTargetCollider = null;
-            IsActing = false;
-            IsLatched = false;
+            wallBatController?.SetPatrolSuspended(false);
             base.OnPossessedEnd();
         }
 

@@ -33,8 +33,15 @@ namespace NPCSystem.Frog
             idleSpeed = Mathf.Max(0f, speed);
         }
 
-        public Vector2 IdleStep(Vector2 currentPosition, float deltaTime)
+        public Vector2 IdleStep(Vector2 currentPosition, float deltaTime, bool grounded)
         {
+            if (!grounded)
+            {
+                velocity = Vector2.zero;
+                SetPosition(currentPosition);
+                return currentPosition;
+            }
+
             Vector2 dir = idleDirection == Vector2.zero ? Vector2.right : idleDirection.normalized;
             velocity = dir * idleSpeed;
             Vector2 newPosition = currentPosition + velocity * deltaTime;

@@ -37,6 +37,9 @@ public class FrogTonguePullImpulse : MonoBehaviour
     //bee
     private Collider2D lastHookCollider;
 
+    public bool IsBusy => busy;
+    public float PullDuration => pullDuration;
+
     public bool AutoScanEnabled
     {
         get => autoScanEnabled;
