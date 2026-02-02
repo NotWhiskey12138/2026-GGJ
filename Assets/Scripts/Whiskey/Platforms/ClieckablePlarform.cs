@@ -17,6 +17,9 @@ public class ClickablePlatform : MonoBehaviour
 
     [Header("蜜蜂")] [SerializeField] private GameObject bee;
     
+    [Header("间隔事件")]
+    []
+    
     private Renderer platformRenderer;
     private MaterialPropertyBlock materialPropertyBlock;
     private Vector3 originalScale;
