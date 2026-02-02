@@ -112,7 +112,7 @@ GameObject:
   - component: {fileID: 4071237610197897174}
   - component: {fileID: 713220741373904791}
   m_Layer: 0
-  m_Name: GuardFlashlight
+  m_Name: GuardFlashlight2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -174,6 +174,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sprite: {fileID: 0}
+  visualRoot: {fileID: 0}
+  lightCone: {fileID: 0}
+  animator: {fileID: 0}
   startDirection: 0
   leftOffset: -3
   rightOffset: 3
@@ -209,7 +212,7 @@ Transform:
   m_GameObject: {fileID: 4510513878588424202}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.39, y: 0.19, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -256,10 +259,10 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1665599067
+  m_SortingLayer: 7
   m_SortingOrder: 0
-  m_Sprite: {fileID: -9041288072863929623, guid: b7e38f991e68d7449add7a4d92bbd9bf, type: 3}
+  m_Sprite: {fileID: 1481200643807374813, guid: d0d9d651018afc34596a5240b88307de, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -304,8 +307,8 @@ CapsuleCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: -0.023600578, y: -0.014160275}
-  m_Size: {x: 1.3870487, y: 2.9345796}
+  m_Offset: {x: -0.0022189617, y: 0.04998398}
+  m_Size: {x: 1.8289323, y: 4.402774}
   m_Direction: 0
 --- !u!114 &189860673565494814
 MonoBehaviour:
@@ -331,7 +334,7 @@ Animator:
   m_GameObject: {fileID: 4510513878588424202}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: de0f41f92f9eb4a4f9e2a58dd37695ab, type: 2}
+  m_Controller: {fileID: 9100000, guid: 1a89b69a492287540876d48a5df5677e, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -449,8 +452,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1665599067
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_Sprite: {fileID: 21300000, guid: e8ff7a45d3e42fd4db0682b4ef006655, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}

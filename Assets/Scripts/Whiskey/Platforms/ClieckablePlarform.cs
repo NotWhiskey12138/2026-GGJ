@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using DG.Tweening;
 
@@ -16,9 +17,11 @@ public class ClickablePlatform : MonoBehaviour
     [SerializeField] private bool isActive = false; // 是否处于激活（红色）状态
 
     [Header("蜜蜂")] [SerializeField] private GameObject bee;
-    
-    [Header("间隔事件")]
-    []
+
+    [Header("间隔参数")] 
+    [SerializeField] private float resetTime;
+    [SerializeField] private bool canPutBee;
+    private float currentTime;
     
     private Renderer platformRenderer;
     private MaterialPropertyBlock materialPropertyBlock;
@@ -32,6 +35,8 @@ public class ClickablePlatform : MonoBehaviour
     void Start()
     {
         originalScale = transform.localScale;
+        canPutBee = true;
+        currentTime = resetTime;
         
         // 获取渲染器
         platformRenderer = GetComponent<Renderer>();
@@ -53,30 +58,48 @@ public class ClickablePlatform : MonoBehaviour
         }
     }
 
+
+    private void Update()
+    {
+        if (!canPutBee)
+        {
+            currentTime -= Time.deltaTime;
+            if (currentTime <= 0)
+            {
+                canPutBee = true;
+                currentTime = resetTime;
+            }
+        }
+    }
+
     void OnMouseDown()
     {
-        // 切换状态
-        ToggleState();
+        if (canPutBee)
+        {
+            canPutBee = false;
+            // 切换状态
+            ToggleState();
 
-        Vector3 spawnPos = transform.position + Vector3.down * 1f;
-        GameObject b = Instantiate(bee, spawnPos, Quaternion.identity);
-        b.tag = "FrogTarget";
+            Vector3 spawnPos = transform.position + Vector3.down * 1f;
+            GameObject b = Instantiate(bee, spawnPos, Quaternion.identity);
+            b.tag = "FrogTarget";
 
-// 从更下面弹到 spawnPos
-        b.transform.DOMoveY(spawnPos.y, 0.3f)
-            .From(spawnPos.y - 0.6f)
-            .SetEase(Ease.OutBack);
+    // 从更下面弹到 spawnPos
+            b.transform.DOMoveY(spawnPos.y, 0.3f)
+                .From(spawnPos.y - 0.6f)
+                .SetEase(Ease.OutBack);
 
-        
-        // 点击动画 - 缩小
-        scaleTween?.Kill();
-        scaleTween = transform.DOScale(originalScale * clickScale, animDuration * 0.5f)
-            .SetEase(Ease.OutQuad)
-            .OnComplete(() => {
-                // 恢复大小
-                transform.DOScale(originalScale, animDuration * 0.5f)
-                    .SetEase(Ease.OutBack);
-            });
+            
+            // 点击动画 - 缩小
+            scaleTween?.Kill();
+            scaleTween = transform.DOScale(originalScale * clickScale, animDuration * 0.5f)
+                .SetEase(Ease.OutQuad)
+                .OnComplete(() => {
+                    // 恢复大小
+                    transform.DOScale(originalScale, animDuration * 0.5f)
+                        .SetEase(Ease.OutBack);
+                });
+        }
     }
 
     // 切换激活状态
