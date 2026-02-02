@@ -97,10 +97,17 @@ namespace NPCSystem.Frog
         private bool IsGrounded()
         {
             if (groundCheck == null) return false;
-            bool grounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer) != null;
+            Collider2D col = groundCheck.GetComponent<Collider2D>();
+            if (col == null) return false;
+
+            ContactFilter2D filter = new ContactFilter2D();
+            filter.SetLayerMask(groundLayer);
+
+            Collider2D[] results = new Collider2D[1];
+            bool grounded = col.Overlap(filter, results) > 0;
             if (debugGrounded)
             {
-                Debug.Log($"[{NpcId}] IsGrounded={grounded} pos={groundCheck.position} radius={groundCheckRadius} layerMask={groundLayer.value}");
+                // Debug.Log($"[{NpcId}] IsGrounded={grounded} pos={groundCheck.position} layerMask={groundLayer.value}");
             }
             return grounded;
         }
