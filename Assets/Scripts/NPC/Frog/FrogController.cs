@@ -16,6 +16,7 @@ namespace NPCSystem.Frog
         [SerializeField] private LayerMask groundLayer;
         [SerializeField] private bool debugGrounded = false;
         [SerializeField] private bool disableEdgeDetectorInAir = true;
+        [SerializeField] private bool debugIdle = false;
 
         private FrogDomain frogDomain;
         private FrogAbility frogAbility;
@@ -56,6 +57,11 @@ namespace NPCSystem.Frog
 
             // Move in idle via domain-driven step.
             base.UpdateMovement();
+            if (debugIdle && frogDomain != null)
+            {
+                Debug.Log($"[{NpcId}] Idle tick speed={frogDomain.IdleSpeed:0.###} dir={frogDomain.IdleDirection}");
+                LogEdgeState();
+            }
         }
 
         protected override bool ShouldPatrol(NpcPhase phase)
@@ -78,6 +84,9 @@ namespace NPCSystem.Frog
             }
 
             frogDomain.FlipIdleDirection();
+            Vector3 scale = transform.localScale;
+            scale.x = -scale.x;
+            transform.localScale = scale;
             Debug.Log($"[{NpcId}] FlipIdleDirection -> {frogDomain.IdleDirection}");
         }
 
@@ -114,6 +123,21 @@ namespace NPCSystem.Frog
                 {
                     edgeDetectors[i].enabled = enable;
                 }
+            }
+        }
+
+        private void LogEdgeState()
+        {
+            if (!edgeDetectorsInitialized)
+            {
+                CacheEdgeDetectors();
+            }
+            if (edgeDetectors == null || edgeDetectors.Length == 0) return;
+            for (int i = 0; i < edgeDetectors.Length; i++)
+            {
+                var detector = edgeDetectors[i];
+                if (detector == null) continue;
+                Debug.Log($"[{NpcId}] EdgeDetector[{i}] edge={detector.IsEdge} wall={detector.IsWall} enabled={detector.enabled}");
             }
         }
     }

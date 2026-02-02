@@ -53,6 +53,7 @@ namespace EnvironmentSystem
                 if (IsEdge)
                 {
                     Debug.Log($"[EdgeDetector] Edge detected by {name} at {origin} dir={dir} dist={rayDistance}");
+                    // Edge takes priority over wall in the same frame.
                     FlipParentDirection();
                 }
                 else
@@ -61,16 +62,23 @@ namespace EnvironmentSystem
                 }
                 wasEdge = IsEdge;
             }
-            else if (verboseDebug)
+            if (verboseDebug)
             {
                 string hitName = hit.collider != null ? hit.collider.name : "None";
-                Debug.Log($"[EdgeDetector] EdgeCheck {name} hit={hitName} dir={dir} dist={rayDistance} layerMask={groundLayer.value}");
+                Debug.Log($"[EdgeDetector] EdgeCheck {name} hit={hitName} isEdge={IsEdge} dir={dir} dist={rayDistance} layerMask={groundLayer.value}");
             }
         }
 
         private void UpdateWallState()
         {
             if (!enableWallCheck)
+            {
+                IsWall = false;
+                return;
+            }
+
+            // If edge is detected, skip wall handling this frame (edge priority).
+            if (IsEdge)
             {
                 IsWall = false;
                 return;
@@ -95,11 +103,11 @@ namespace EnvironmentSystem
                 }
                 IsWall = nowWall;
             }
-            else if (verboseDebug)
+            if (verboseDebug)
             {
                 string leftName = hitLeft.collider != null ? hitLeft.collider.name : "None";
                 string rightName = hitRight.collider != null ? hitRight.collider.name : "None";
-                Debug.Log($"[EdgeDetector] WallCheck {name} left={leftName} right={rightName} dist={wallDistance} layerMask={groundLayer.value}");
+                Debug.Log($"[EdgeDetector] WallCheck {name} left={leftName} right={rightName} isWall={IsWall} dist={wallDistance} layerMask={groundLayer.value}");
             }
         }
 
