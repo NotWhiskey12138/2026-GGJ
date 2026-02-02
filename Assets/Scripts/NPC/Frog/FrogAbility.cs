@@ -69,6 +69,7 @@ namespace NPCSystem.Frog
         {
             if (!isActive) return;
             if (tongue == null) return;
+            if (tongue.IsBusy) return;
 
             Vector2 origin = mouth ? (Vector2)mouth.position : (Vector2)transform.position;
             Collider2D[] hits = Physics2D.OverlapCircleAll(origin, detectRadius, targetLayer);
