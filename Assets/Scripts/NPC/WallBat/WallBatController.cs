@@ -58,10 +58,19 @@ namespace NPCSystem.WallBat
                 return;
             }
 
+            if (debugPatrol)
+            {
+                bool? grounded = GetIsGroundedViaReflection();
+                bool requireGrounded = GetRequireGroundedViaReflection();
+                Debug.Log($"[{name}] UpdateMovement requireGrounded={requireGrounded} grounded={grounded?.ToString() ?? "unknown"}");
+            }
+
             base.UpdateMovement();
             if (debugPatrol)
             {
-                Debug.Log($"[{name}] Patrol tick (idleSpeed={GetIdleSpeedViaReflection():0.###})");
+                Vector2 vel = cachedRb != null ? cachedRb.linearVelocity : Vector2.zero;
+                Vector2 idleDir = GetIdleDirectionViaReflection();
+                Debug.Log($"[{name}] Patrol tick (idleSpeed={GetIdleSpeedViaReflection():0.###} idleDir={idleDir} vel={vel})");
             }
         }
 
@@ -149,8 +158,38 @@ namespace NPCSystem.WallBat
 
             if (debugPatrol)
             {
-                Debug.Log($"[{name}] FlipIdleDirection (wallbat) -> patrolForward={patrolForward}");
+                Vector2 idleDir = GetIdleDirectionViaReflection();
+                Debug.Log($"[{name}] FlipIdleDirection (wallbat) -> patrolForward={patrolForward} idleDir={idleDir}");
             }
+        }
+
+        private bool? GetIsGroundedViaReflection()
+        {
+            var method = typeof(FrogController).GetMethod("IsGrounded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (method == null) return null;
+            object value = method.Invoke(this, null);
+            return value is bool b ? b : (bool?)null;
+        }
+
+        private bool GetRequireGroundedViaReflection()
+        {
+            var field = typeof(FrogController).GetField("requireGroundedForPatrol", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (field == null) return false;
+            object value = field.GetValue(this);
+            return value is bool b && b;
+        }
+
+        private Vector2 GetIdleDirectionViaReflection()
+        {
+            var field = typeof(FrogController).GetField("frogDomain", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (field == null) return Vector2.zero;
+            var domain = field.GetValue(this);
+            if (domain == null) return Vector2.zero;
+
+            var prop = domain.GetType().GetProperty("IdleDirection", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            if (prop == null) return Vector2.zero;
+            object value = prop.GetValue(domain);
+            return value is Vector2 v ? v : Vector2.zero;
         }
     }
 }
