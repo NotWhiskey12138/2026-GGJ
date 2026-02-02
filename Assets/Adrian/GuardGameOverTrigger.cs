@@ -1,5 +1,8 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using NPCSystem;
+using MaskSystem.Domain;
+using MaskSystem;
 
 public class GuardGameOverTrigger : MonoBehaviour
 {
@@ -14,7 +17,15 @@ public class GuardGameOverTrigger : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (triggered) return;
-        if (!other.CompareTag(playerTag)) return;
+        NPC npc = other.GetComponent<NPC>();
+        if (npc != null)
+        {
+            if (!npc.IsPossessed) return;
+        }
+        else if (!other.CompareTag(playerTag))
+        {
+            return;
+        }
 
         triggered = true;
 
@@ -23,6 +34,13 @@ public class GuardGameOverTrigger : MonoBehaviour
 
         if (reloadSceneOnGameOver)
         {
+            // Reset mask state so it won't stay attached after reload
+            MaskDomain.Instance.ForceReset();
+            var mask = FindObjectOfType<Mask>();
+            if (mask != null)
+            {
+                mask.ResetToSpawn();
+            }
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }

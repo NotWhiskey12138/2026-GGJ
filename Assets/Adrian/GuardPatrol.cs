@@ -1,18 +1,35 @@
 using System.Collections;
 using UnityEngine;
+using DG.Tweening;
 
 public class GuardPatrol2D_Range : MonoBehaviour
 {
+
+    private Tween idleTween;     // ç­‰å¾…æ—¶å¾ªç¯åŠ¨ç”»
+    private Tween turnTween;     // è½¬èº«çš„å°æŠ–åŠ¨
+    private Quaternion baseRotation;
+    public SpriteRenderer sprite;  // å­ç‰©ä½“ä¸Šçš„ SpriteRenderer
+    private Vector3 baseVisualScale;
+    [SerializeField] private Transform visualRoot;   // æ‹– VisualRoot
+    [SerializeField] private Transform lightCone;    // å¯é€‰ï¼šæ‹– LightCone
+    private Vector3 visualBaseScale;
+
+    [SerializeField] private Animator animator;
+
+// æå‰ç¼“å­˜ hashï¼ˆæ€§èƒ½æ›´å¥½ï¼‰
+    private static readonly int IsWaitingHash = Animator.StringToHash("IsWaiting");
+
+
     public enum StartDirection { Left, Right }
 
     [Header("Start Direction")]
     public StartDirection startDirection = StartDirection.Right;
 
     [Header("Range relative to spawn position (local offsets)")]
-    [Tooltip("Ïà¶Ô³öÉúµãµÄ×ó±ß½çÆ«ÒÆ£¨Í¨³£Îª¸ºÊı£©")]
+    [Tooltip("ï¿½ï¿½Ô³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½Æ«ï¿½Æ£ï¿½Í¨ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½")]
     public float leftOffset = -3f;
 
-    [Tooltip("Ïà¶Ô³öÉúµãµÄÓÒ±ß½çÆ«ÒÆ£¨Í¨³£ÎªÕıÊı£©")]
+    [Tooltip("ï¿½ï¿½Ô³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò±ß½ï¿½Æ«ï¿½Æ£ï¿½Í¨ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½")]
     public float rightOffset = 3f;
 
     [Header("Movement")]
@@ -27,14 +44,37 @@ public class GuardPatrol2D_Range : MonoBehaviour
     private float targetX;
     private bool waiting;
 
-    private Vector3 baseScale; // ¼ÇÂ¼³õÊ¼scale£¬·­×ªÊ±²»¸Ä±ä´óĞ¡
+    private Vector3 baseScale; // ï¿½ï¿½Â¼ï¿½ï¿½Ê¼scaleï¿½ï¿½ï¿½ï¿½×ªÊ±ï¿½ï¿½ï¿½Ä±ï¿½ï¿½Ğ¡
 
     private void Awake()
     {
         if (rb == null) rb = GetComponent<Rigidbody2D>();
-        baseScale = transform.localScale;
 
-        // ·À´ô£ºÈç¹ûÄãÌî·´ÁË£¬×Ô¶¯½»»»
+        // Animatorï¼šæœ€å¥½ Inspector æ‰‹åŠ¨æ‹–ï¼Œè‡ªåŠ¨æ‰¾ä¹Ÿè¡Œ
+        if (animator == null) animator = GetComponentInChildren<Animator>();
+
+        // æ‰¾ VisualRoot
+        if (visualRoot == null)
+        {
+            visualRoot = transform.Find("VisualRoot");
+            if (visualRoot == null)
+            {
+                Debug.LogWarning("VisualRoot not found. Using self as visualRoot.");
+                visualRoot = transform;
+            }
+        }
+
+        // âœ… å…³é”®ï¼šè®°å½• visualRoot çš„åˆå§‹ scaleï¼Œç”¨æ¥ç¿»é¢/idleï¼ˆå¦åˆ™æ˜¯0ï¼‰
+        visualBaseScale = visualRoot.localScale;
+
+        // âœ… å…³é”®ï¼šrotation ä¹Ÿè®°å½• visualRoot çš„æœ¬åœ°æ—‹è½¬ï¼ˆä¸è¦ç”¨ transform.rotationï¼‰
+        baseRotation = visualRoot.localRotation;
+
+        // âœ… å…³é”®ï¼šæ‰¾åˆ° spriteï¼Œç”¨äº turn anticipationï¼ˆå¦åˆ™ sprite ä¸ºç©ºï¼‰
+        if (sprite == null) sprite = GetComponentInChildren<SpriteRenderer>();
+        if (sprite != null) baseVisualScale = sprite.transform.localScale;
+
+        // offsets ä¿®æ­£
         if (leftOffset > rightOffset)
         {
             float t = leftOffset;
@@ -50,10 +90,10 @@ public class GuardPatrol2D_Range : MonoBehaviour
         minX = startX + leftOffset;
         maxX = startX + rightOffset;
 
-        // ¸ù¾İÆğÊ¼·½Ïò¾ö¶¨µÚÒ»¶Î×ßÏò
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         targetX = (startDirection == StartDirection.Right) ? maxX : minX;
 
-        // Á¢¿Ì·­×ªµ½¶ÔÓ¦·½Ïò
+        // ï¿½ï¿½ï¿½Ì·ï¿½×ªï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½
         FaceTarget(targetX);
     }
 
@@ -69,30 +109,49 @@ public class GuardPatrol2D_Range : MonoBehaviour
         if (rb) rb.MovePosition(newPos);
         else transform.position = new Vector3(newX, transform.position.y, transform.position.z);
 
-        if (Mathf.Abs(newX - targetX) < 0.001f)
+        if (!waiting && Mathf.Abs(newX - targetX) < 0.001f)
         {
+            waiting = true;
+
+// é€šçŸ¥ Animatorï¼šè¿›å…¥ç­‰å¾…çŠ¶æ€
+            animator.SetBool(IsWaitingHash, true);
+
             StartCoroutine(WaitAndTurn());
+
         }
+
     }
 
     private IEnumerator WaitAndTurn()
     {
-        waiting = true;
+        PlayGuardIdle();
         yield return new WaitForSeconds(waitSeconds);
+        StopGuardIdle();
 
-        targetX = Mathf.Approximately(targetX, minX) ? maxX : minX;
-        FaceTarget(targetX);
+        float nextX = Mathf.Approximately(targetX, minX) ? maxX : minX;
 
+        PlayTurnAnticipation(() =>
+        {
+            targetX = nextX;
+            FaceTarget(targetX);
+        });
+
+        yield return new WaitForSeconds(0.2f);
         waiting = false;
+
+// ç¦»å¼€ç­‰å¾…çŠ¶æ€
+        animator.SetBool(IsWaitingHash, false);
+
     }
 
     private void FaceTarget(float x)
     {
-        bool faceRight = x > transform.position.x;
+        float currentX = rb ? rb.position.x : transform.position.x;
+        bool faceRight = x > currentX;
         float sign = faceRight ? 1f : -1f;
 
-        // ÓÃ³õÊ¼scaleµÄ¾ø¶ÔÖµ£¬±£Ö¤²»»áÔ½·­Ô½Ğ¡/Ô½´ó
-        transform.localScale = new Vector3(Mathf.Abs(baseScale.x) * sign, baseScale.y, baseScale.z);
+        // åªç¿»è§†è§‰èŠ‚ç‚¹ï¼Œä¸åŠ¨ rootï¼ˆé¿å…å½±å“ Rigidbody2D / ç¢°æ’ä½“ï¼‰
+        visualRoot.localScale = new Vector3(Mathf.Abs(visualBaseScale.x) * sign, visualBaseScale.y, visualBaseScale.z);
     }
 
     private void OnDrawGizmosSelected()
@@ -111,4 +170,54 @@ public class GuardPatrol2D_Range : MonoBehaviour
         Gizmos.DrawSphere(p1, 0.08f);
         Gizmos.DrawSphere(p2, 0.08f);
     }
+    
+    private void PlayGuardIdle()
+    {
+        StopGuardIdle();
+
+        float dir = Mathf.Sign(visualRoot.localScale.x);
+        float absX = Mathf.Abs(visualBaseScale.x);
+
+        var seq = DOTween.Sequence();
+
+        // åªåœ¨è§†è§‰èŠ‚ç‚¹ä¸Šåšâ€œå‹ç¼©å‘¼å¸â€ï¼Œä¿ç•™ dir
+        seq.Append(visualRoot.DOScale(
+            new Vector3(absX * dir, visualBaseScale.y * 0.95f, visualBaseScale.z), 0.18f));
+        seq.Append(visualRoot.DOScale(
+            new Vector3(absX * dir, visualBaseScale.y, visualBaseScale.z), 0.25f));
+
+        // æ‘†åŠ¨ä¹Ÿç”¨ LocalRotateï¼Œé¿å…å½±å“ root
+        seq.Append(visualRoot.DOLocalRotate(new Vector3(0,0, 3f), 0.35f));
+        seq.Append(visualRoot.DOLocalRotate(new Vector3(0,0,-3f), 0.70f));
+        seq.Append(visualRoot.DOLocalRotate(Vector3.zero, 0.35f));
+
+        seq.SetEase(Ease.InOutSine);
+        seq.SetLoops(-1);
+
+        idleTween = seq;
+    }
+
+    private void StopGuardIdle()
+    {
+        idleTween?.Kill();
+
+        float dir = Mathf.Sign(visualRoot.localScale.x);
+        float absX = Mathf.Abs(visualBaseScale.x);
+
+        visualRoot.localScale = new Vector3(absX * dir, visualBaseScale.y, visualBaseScale.z);
+        visualRoot.localRotation = baseRotation;
+    }
+    
+    private void PlayTurnAnticipation(System.Action onFlip)
+    {
+        turnTween?.Kill();
+        var v = sprite.transform;
+
+        turnTween = DOTween.Sequence()
+            .Append(v.DOScaleY(baseVisualScale.y * 0.9f, 0.12f).SetEase(Ease.OutQuad))
+            .AppendCallback(() => onFlip?.Invoke())
+            .Append(v.DOScaleY(baseVisualScale.y, 0.18f).SetEase(Ease.OutBack));
+    }
+
+
 }

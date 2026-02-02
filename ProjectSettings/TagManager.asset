@@ -2,8 +2,11 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
-  tags: []
+  serializedVersion: 3
+  tags:
+  - FrogTarget
+  - BatTarget
+  - NPC
   layers:
   - Default
   - TransparentFX
@@ -11,10 +14,10 @@ TagManager:
   - 
   - Water
   - UI
-  - 
-  - 
-  - 
-  - 
+  - Ground
+  - Platform
+  - Player
+  - Inter
   - 
   - 
   - 
@@ -41,3 +44,29 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: BackGround
+    uniqueID: 3369555537
+    locked: 0
+  - name: Water
+    uniqueID: 3785502689
+    locked: 0
+  - name: Back
+    uniqueID: 2002189075
+    locked: 0
+  - name: Middle
+    uniqueID: 3823972643
+    locked: 0
+  - name: Front
+    uniqueID: 1513742265
+    locked: 0
+  - name: Item
+    uniqueID: 3172114457
+    locked: 0
+  - name: NPC
+    uniqueID: 2629368229
+    locked: 0
+  - name: Partivle System
+    uniqueID: 2991714869
+    locked: 0
+  m_RenderingLayers:
+  - Default
