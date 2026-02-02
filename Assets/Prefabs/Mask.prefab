@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 3406543818587343964}
   - component: {fileID: 7864626944099122329}
   - component: {fileID: 7019115905217943975}
+  - component: {fileID: 8986539380650752196}
   m_Layer: 0
   m_Name: Mask
   m_TagString: Player
@@ -134,6 +135,20 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 0
+--- !u!114 &8986539380650752196
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3292142337451727817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebe15dc0519695f499f0e1972d58b0af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  floatHeight: 0.3
+  duration: 1.2
 --- !u!1 &6630661338623402742
 GameObject:
   m_ObjectHideFlags: 0
@@ -190,7 +205,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: aaba562ca43ac1644b049d7f37540488, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
