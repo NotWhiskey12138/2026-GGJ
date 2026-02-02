@@ -18,14 +18,17 @@ namespace NPCSystem.Frog
         [SerializeField] private bool disableEdgeDetectorInAir = true;
         [SerializeField] private bool debugIdle = false;
 
+        private Animator animator;
         private FrogDomain frogDomain;
         private FrogAbility frogAbility;
         private EnvironmentSystem.EdgeDetector[] edgeDetectors;
         private bool edgeDetectorsInitialized;
+        private bool isHead;
 
         protected override void OnEnable()
         {
             frogAbility = GetComponentInChildren<FrogAbility>(true);
+            animator = GetComponentInChildren<Animator>();
             CacheEdgeDetectors();
             base.OnEnable();
         }
@@ -141,5 +144,18 @@ namespace NPCSystem.Frog
                 Debug.Log($"[{NpcId}] EdgeDetector[{i}] edge={detector.IsEdge} wall={detector.IsWall} enabled={detector.enabled}");
             }
         }
+        
+        protected override void HandlePossessionStarted(object sender, string targetNpcId)
+        {
+            base.HandlePossessionStarted(sender, targetNpcId); // 让domain/ability逻辑照常走
+            if (animator) animator.SetBool("isHead", true);
+        }
+
+        protected override void HandlePossessionEnded(object sender, string targetNpcId)
+        {
+            base.HandlePossessionEnded(sender, targetNpcId);
+            if (animator) animator.SetBool("isHead", false);
+        }
+
     }
 }

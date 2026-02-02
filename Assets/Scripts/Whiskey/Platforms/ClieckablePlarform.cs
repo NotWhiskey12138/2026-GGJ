@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using DG.Tweening;
+using TMPro;
+using UnityEngine.Rendering.Universal;
 
 public class ClickablePlatform : MonoBehaviour
 {
@@ -22,6 +24,13 @@ public class ClickablePlatform : MonoBehaviour
     [SerializeField] private float resetTime;
     [SerializeField] private bool canPutBee;
     private float currentTime;
+
+    [Header("倒计时显示")] 
+    [SerializeField] private TextMeshPro countdownText;
+    [SerializeField] private bool showDecimal = false;
+    
+    [Header("Light 2D")]
+    [SerializeField] private Light2D light2D;
     
     private Renderer platformRenderer;
     private MaterialPropertyBlock materialPropertyBlock;
@@ -56,26 +65,65 @@ public class ClickablePlatform : MonoBehaviour
         {
             gameObject.AddComponent<BoxCollider2D>();
         }
+        
+        if (countdownText != null)
+        {
+            countdownText.text = "";
+            countdownText.gameObject.SetActive(false);
+        }
+
     }
 
+    private int lastShown = -999;
 
     private void Update()
     {
         if (!canPutBee)
         {
+            light2D.intensity = 5f;
+            
             currentTime -= Time.deltaTime;
-            if (currentTime <= 0)
+
+            // 夹住，避免变成负数
+            if (currentTime < 0f) currentTime = 0f;
+
+            // 计算要显示的整数秒：5,4,3,2,1
+            int show = Mathf.CeilToInt(currentTime);
+
+            // 只有当数字变化时才刷新文本（防止每帧改字符串）
+            if (show != lastShown)
+            {
+                lastShown = show;
+
+                if (countdownText != null)
+                {
+                    countdownText.gameObject.SetActive(true);
+                    countdownText.text = show.ToString();
+                }
+            }
+
+            if (currentTime <= 0f)
             {
                 canPutBee = true;
                 currentTime = resetTime;
+                lastShown = -999;
+
+                if (countdownText != null)
+                {
+                    countdownText.text = "";
+                    countdownText.gameObject.SetActive(false);
+                }
             }
         }
     }
+
 
     void OnMouseDown()
     {
         if (canPutBee)
         {
+            light2D.intensity = 1f;
+            
             canPutBee = false;
             // 切换状态
             ToggleState();
@@ -84,7 +132,7 @@ public class ClickablePlatform : MonoBehaviour
             GameObject b = Instantiate(bee, spawnPos, Quaternion.identity);
             b.tag = "FrogTarget";
 
-    // 从更下面弹到 spawnPos
+            // 从更下面弹到 spawnPos
             b.transform.DOMoveY(spawnPos.y, 0.3f)
                 .From(spawnPos.y - 0.6f)
                 .SetEase(Ease.OutBack);
@@ -99,6 +147,8 @@ public class ClickablePlatform : MonoBehaviour
                     transform.DOScale(originalScale, animDuration * 0.5f)
                         .SetEase(Ease.OutBack);
                 });
+
+            
         }
     }
 
