@@ -113,6 +113,7 @@ namespace EnvironmentSystem
 
         private void FlipParentDirection()
         {
+            Debug.Log("Flipping parent direction");
             var frogController = GetComponentInParent<NPCSystem.Frog.FrogController>();
             if (frogController != null)
             {

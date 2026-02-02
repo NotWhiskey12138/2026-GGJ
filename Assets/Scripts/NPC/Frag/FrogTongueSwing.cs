@@ -189,5 +189,9 @@ public class FrogTonguePullImpulse : MonoBehaviour
         Vector3 origin = mouth ? mouth.position : transform.position;
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(origin, detectRadius);
+
+        Vector3 origin2 = groundCheck.position;
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(origin2, groundCheckRadius);
     }
 }
