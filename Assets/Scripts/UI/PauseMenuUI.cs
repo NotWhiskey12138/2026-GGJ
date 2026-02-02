@@ -50,6 +50,17 @@ public class PauseMenuUI : MonoBehaviour
         SceneManager.LoadScene(mainMenuScene);
     }
 
+    public void RestartLevel()
+    {
+        Time.timeScale = 1f;
+        var mask = FindObjectOfType<MaskSystem.Mask>();
+        if (mask != null)
+        {
+            mask.ResetToSpawn();
+        }
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
     public void QuitGame()
     {
         Application.Quit();
