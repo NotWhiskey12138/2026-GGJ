@@ -14,6 +14,7 @@
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/Assets/Shader/SG_Frog.shader" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Library/PackageCache/com.unity.2d.tilemap@b1f6833cdf82/Editor/GridEditorUtility.cs" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="ProjectColorInfo">{
@@ -102,7 +103,7 @@
       <option name="presentableId" value="Default" />
       <updated>1769839815050</updated>
       <workItem from="1769839819130" duration="2961000" />
-      <workItem from="1769983689279" duration="2614000" />
+      <workItem from="1769983689279" duration="3210000" />
     </task>
     <servers />
   </component>
