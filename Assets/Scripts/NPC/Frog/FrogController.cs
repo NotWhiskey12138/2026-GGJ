@@ -59,7 +59,8 @@ namespace NPCSystem.Frog
             base.UpdateMovement();
             if (debugIdle && frogDomain != null)
             {
-                Debug.Log($"[{NpcId}] Idle tick speed={frogDomain.IdleSpeed:0.###} dir={frogDomain.IdleDirection}");
+                Vector2 vel = rb != null ? rb.linearVelocity : Vector2.zero;
+                Debug.Log($"[{NpcId}] Idle tick speed={frogDomain.IdleSpeed:0.###} dir={frogDomain.IdleDirection} vel={vel}");
                 LogEdgeState();
             }
         }
@@ -75,7 +76,7 @@ namespace NPCSystem.Frog
             // Frog auto-catches via tongue when possessed.
         }
 
-        public void FlipIdleDirection()
+        public virtual void FlipIdleDirection()
         {
             if (frogDomain == null)
             {

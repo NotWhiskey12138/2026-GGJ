@@ -13,8 +13,6 @@ namespace NPCSystem.WallBat
 
         private bool suspendPatrol;
         private Rigidbody2D cachedRb;
-        private EnvironmentSystem.EdgeDetector[] edgeDetectors;
-        private bool lastEdgeHit;
         private bool patrolForward = true;
 
         protected override void OnEnable()
@@ -25,13 +23,11 @@ namespace NPCSystem.WallBat
             {
                 cachedRb.gravityScale = 0f;
             }
-            edgeDetectors = GetComponentsInChildren<EnvironmentSystem.EdgeDetector>(true);
         }
 
         protected override void FixedUpdate()
         {
             ApplyCustomGravity();
-            CheckEdgeDetectors();
             base.FixedUpdate();
         }
 
@@ -141,39 +137,20 @@ namespace NPCSystem.WallBat
             return value is float f ? f : -1f;
         }
 
-        private void CheckEdgeDetectors()
+
+        public override void FlipIdleDirection()
         {
-            if (edgeDetectors == null || edgeDetectors.Length == 0) return;
+            patrolForward = !patrolForward;
+            UpdateIdleDirectionFromGravity();
 
-            bool nowEdge = false;
-            bool nowWall = false;
-            for (int i = 0; i < edgeDetectors.Length; i++)
+            Vector3 scale = transform.localScale;
+            scale.x = -scale.x;
+            transform.localScale = scale;
+
+            if (debugPatrol)
             {
-                var detector = edgeDetectors[i];
-                if (detector == null) continue;
-                if (detector.IsEdge)
-                {
-                    nowEdge = true;
-                }
-                if (detector.IsWall)
-                {
-                    nowWall = true;
-                }
+                Debug.Log($"[{name}] FlipIdleDirection (wallbat) -> patrolForward={patrolForward}");
             }
-
-            bool shouldFlip = nowEdge || (!nowEdge && nowWall);
-            if (shouldFlip && !lastEdgeHit)
-            {
-                patrolForward = !patrolForward;
-                UpdateIdleDirectionFromGravity();
-                if (debugPatrol)
-                {
-                    string reason = nowEdge ? "edge" : "wall";
-                    Debug.Log($"[{name}] {reason} hit -> patrolForward={patrolForward}");
-                }
-            }
-
-            lastEdgeHit = shouldFlip;
         }
     }
 }
