@@ -5,7 +5,7 @@ public class MainMenuUI : MonoBehaviour
 {
     public void StartGame()
     {
-        SceneManager.LoadScene("Level-Tutorial");
+        SceneManager.LoadScene("IntroScene");
     }
 
     public void OpenSettings()
