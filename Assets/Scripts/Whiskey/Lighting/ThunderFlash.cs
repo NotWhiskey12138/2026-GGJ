@@ -28,7 +28,7 @@ public class ThunderFlash : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(Random.Range(4f, 8f));
+            yield return new WaitForSeconds(Random.Range(6f, 12f));
 
             // 闪一下
             if (lightningLight != null)
