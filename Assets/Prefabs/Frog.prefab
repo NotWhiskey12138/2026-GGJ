@@ -98,7 +98,7 @@ MonoBehaviour:
     m_Bits: 0
   pullDuration: 0.1
   pullDistance: 1.2
-  impulse: 10
+  impulse: 11
   impulseUpBonus: 0
 --- !u!61 &4170836177166893901
 BoxCollider2D:
@@ -137,10 +137,10 @@ BoxCollider2D:
   m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0, y: 0}
-    oldSize: {x: 0, y: 0}
-    newSize: {x: 0, y: 0}
-    adaptiveTilingThreshold: 0
+    pivot: {x: 0.5, y: 0.5}
+    oldSize: {x: 1.1015625, y: 1.0234375}
+    newSize: {x: 1.1015625, y: 1.0234375}
+    adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
@@ -170,9 +170,9 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
-  debugGrounded: 0
+  debugGrounded: 1
   disableEdgeDetectorInAir: 1
-  debugIdle: 0
+  debugIdle: 1
 --- !u!114 &6458527996065269612
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -358,6 +358,7 @@ GameObject:
   - component: {fileID: 4395887671528344146}
   - component: {fileID: 6758075883985770784}
   - component: {fileID: 6415849789693090253}
+  - component: {fileID: 4102268278365930930}
   m_Layer: 9
   m_Name: Body
   m_TagString: Untagged
@@ -469,7 +470,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0.01560688, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -479,8 +480,30 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.80142975, y: 1}
   m_EdgeRadius: 0
+--- !u!95 &4102268278365930930
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3950441447423678813}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: ed9c0740e0c36e8419b5ec53da4dfe75, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &6421401487111838309
 GameObject:
   m_ObjectHideFlags: 0
@@ -566,7 +589,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6088975780935710650, guid: a510f4b4e530841b49bf7da45a9a0ad7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.343
+      value: 0.189
       objectReference: {fileID: 0}
     - target: {fileID: 6088975780935710650, guid: a510f4b4e530841b49bf7da45a9a0ad7, type: 3}
       propertyPath: m_LocalPosition.y
