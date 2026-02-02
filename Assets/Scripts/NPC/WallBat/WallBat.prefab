@@ -253,8 +253,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: -1665599067
+  m_SortingLayer: 7
   m_SortingOrder: 0
   m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -353,7 +353,7 @@ MonoBehaviour:
   cooldown: 1
   autoScanEnabled: 1
   requireAirborne: 0
-  groundCheck: {fileID: 0}
+  groundCheck: {fileID: 8757023664789522729}
   groundCheckRadius: 0.12
   groundLayer:
     serializedVersion: 2
@@ -418,7 +418,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55f6fb35b028742b6bbe4e39c1c78c83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetTag: WallBatFood
+  targetTag: WallBatTarget
   targetLayer:
     serializedVersion: 2
     m_Bits: 128
@@ -549,11 +549,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6088975780935710650, guid: a510f4b4e530841b49bf7da45a9a0ad7, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.39
+      value: 0.45
       objectReference: {fileID: 0}
     - target: {fileID: 6088975780935710650, guid: a510f4b4e530841b49bf7da45a9a0ad7, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -0.99
       objectReference: {fileID: 0}
     - target: {fileID: 6088975780935710650, guid: a510f4b4e530841b49bf7da45a9a0ad7, type: 3}
       propertyPath: m_LocalPosition.z
